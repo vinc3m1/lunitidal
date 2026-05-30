@@ -44,6 +44,13 @@ describe('stations', () => {
     expect(searchByName(index, '')).toEqual([]);
   });
 
+  it('supports token-based multi-word searches in any order', () => {
+    expect(searchByName(index, 'sydney nsw').map((s) => s.id)).toEqual(['sydney']);
+    expect(searchByName(index, 'nsw sydney').map((s) => s.id)).toEqual(['sydney']);
+    expect(searchByName(index, 'indonesia benoa').map((s) => s.id)).toEqual(['benoa']);
+    expect(searchByName(index, 'bali sanur').map((s) => s.id)).toEqual(['sanur']);
+  });
+
   it('search is case-insensitive and trims whitespace', () => {
     expect(searchByName(index, '  BeNoA ').map((s) => s.id)).toEqual(['benoa']);
   });

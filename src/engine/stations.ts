@@ -46,15 +46,26 @@ export function nearest(index: IndexEntry[], lat: number, lon: number, n = 1): N
 }
 
 export function searchByName(index: IndexEntry[], query: string, limit = 25): IndexEntry[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
+  const tokens = query
+    .toLowerCase()
+    .split(/[\s,.-]+/)
+    .filter(Boolean);
+
+  if (tokens.length === 0) return [];
+
   return index
-    .filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.region?.toLowerCase().includes(q) ?? false) ||
-        s.country.toLowerCase().includes(q),
-    )
+    .filter((s) => {
+      const name = s.name.toLowerCase();
+      const region = s.region?.toLowerCase() ?? '';
+      const country = s.country.toLowerCase();
+
+      return tokens.every(
+        (token) =>
+          name.includes(token) ||
+          region.includes(token) ||
+          country.includes(token),
+      );
+    })
     .slice(0, limit);
 }
 
