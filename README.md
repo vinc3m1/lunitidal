@@ -3,7 +3,7 @@
 Tide predictions that work offline, computed right in your browser. No account, no API
 keys, no tracking.
 
-**→ [Open the app](https://lunitidal.app/)**
+**→ [Open the app](https://www.lunitidal.app/)**
 
 Install it to your home screen and it keeps working without a connection.
 
