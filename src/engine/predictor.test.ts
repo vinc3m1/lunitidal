@@ -132,12 +132,30 @@ describe('Subordinate predictor', () => {
     }
   });
 
-  it('generates a continuous, smooth warped curve', () => {
+  it('generates a continuous, smooth warped curve without stair-stepping', () => {
     const pts = subModel.timeline(dayStart, dayEnd, 600);
     expect(pts.length).toBe(600);
-    for (const p of pts) {
+    
+    let flatCount = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
       expect(Number.isFinite(p.level)).toBe(true);
       expect(Math.abs(p.level)).toBeLessThan(5);
+
+      if (i > 0) {
+        const prev = pts[i - 1];
+        const diff = Math.abs(p.level - prev.level);
+        
+        // Assert no sudden vertical jumps (all 10-minute changes are smooth and under 0.4m)
+        expect(diff).toBeLessThan(0.4);
+        
+        // Count consecutive identical points (flat steps)
+        if (diff === 0) {
+          flatCount++;
+        }
+      }
     }
+    // Verify there are no stair-stepped flat plateaus
+    expect(flatCount).toBeLessThan(2);
   });
 });
