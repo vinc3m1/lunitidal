@@ -4,7 +4,7 @@ test('“use my location” snaps to the nearest station with confidence', async
   await page.goto('/');
   await page.getByTestId('change-location').click();
   await page.getByTestId('use-my-location').click();
-  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
   const bar = page.locator('header.locbar');
   await expect(bar).toContainText('away');
   await expect(bar).toContainText(/good match|approximate|rough estimate|nearest available/);
@@ -16,18 +16,18 @@ test('“use my location” snaps to the nearest station with confidence', async
 test('offline station-name search selects a station', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('change-location').click();
-  await page.getByTestId('search-input').fill('Benoa');
+  await page.getByTestId('map-search-input').fill('Benoa');
   await page.getByTestId('station-result').first().click();
-  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
   await expect(page.locator('header.locbar .name')).toHaveText('Benoa');
 });
 
 test('online place search selects a place and updates the location', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('change-location').click();
-  await page.getByTestId('search-input').fill('Tanjung Benoa');
+  await page.getByTestId('map-search-input').fill('Tanjung Benoa');
   await page.getByTestId('place-result').first().click();
-  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
   const bar = page.locator('header.locbar');
   await expect(bar.locator('.name')).toHaveText('Tanjung Benoa, Bali, Indonesia');
   await expect(bar).toContainText('Benoa'); // Snaps to Benoa tide station
@@ -46,8 +46,7 @@ test('favorite persists across reload (regression: persisted arrays)', async ({ 
 
 test('map opens with a MapLibre canvas', async ({ page }) => {
   await page.goto('/');
-  await page.getByTestId('change-location').click();
-  await page.getByTestId('open-map').click();
+  await page.getByTestId('expand-map').click();
   await expect(page.getByTestId('map-sheet')).toBeVisible();
   await expect(page.getByTestId('map-sheet').locator('.maplibregl-canvas')).toBeVisible();
   await page.getByTestId('map-close').click();
@@ -60,8 +59,7 @@ test('map geolocate pans quickly and completes transition within 600ms even for 
   await page.context().setGeolocation({ latitude: 40.7128, longitude: -74.0060 });
 
   await page.goto('/');
-  await page.getByTestId('change-location').click();
-  await page.getByTestId('open-map').click();
+  await page.getByTestId('expand-map').click();
   await expect(page.getByTestId('map-sheet')).toBeVisible();
 
   const mapSheet = page.getByTestId('map-sheet');
@@ -104,8 +102,7 @@ test('map geolocate pans quickly and completes transition within 600ms even for 
 
 test('dropping a pin on the map displays the "Use this location" button', async ({ page }) => {
   await page.goto('/');
-  await page.getByTestId('change-location').click();
-  await page.getByTestId('open-map').click();
+  await page.getByTestId('expand-map').click();
   await expect(page.getByTestId('map-sheet')).toBeVisible();
 
   // Click on the map canvas to drop a pin
@@ -125,11 +122,11 @@ test('dropping a pin on the map displays the "Use this location" button', async 
 test('searching and selecting a subordinate station works without crashes and displays offsets', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('change-location').click();
-  await page.getByTestId('search-input').fill('Kashega Bay');
+  await page.getByTestId('map-search-input').fill('Kashega Bay');
   
   // Wait for the station result to appear and click it
   await page.getByTestId('station-result').first().click();
-  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
   
   // Verify that the location is set to Kashega Bay
   const bar = page.locator('header.locbar');
@@ -151,7 +148,7 @@ test('token-based multi-word search matches "Oakland, CA" successfully', async (
   await page.getByTestId('change-location').click();
   
   // Search for "oakland ca" in any order/case
-  await page.getByTestId('search-input').fill('oakland ca');
+  await page.getByTestId('map-search-input').fill('oakland ca');
   
   // Verify that the station "Oakland" appears in the results
   const result = page.getByTestId('station-result').first();

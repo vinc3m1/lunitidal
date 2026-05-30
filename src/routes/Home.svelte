@@ -11,24 +11,34 @@
   import Readout from '../components/Readout.svelte';
   import ExtremesTable from '../components/ExtremesTable.svelte';
   import LocationBar from '../components/LocationBar.svelte';
-  import LocationSearch from '../components/LocationSearch.svelte';
   import MarineCard from '../components/MarineCard.svelte';
 
   let now = new Date();
   let dayOffset = 0;
   let scrubMs = now.getTime();
-  let showSearch = false;
   let showMap = false;
   // Keep MapLibre split out of the initial bundle; load it after the home shell renders.
   let MapComp: typeof import('../components/StationMap.svelte').default | null = null;
+  let mapInstance: any;
 
   async function loadMap() {
     if (!MapComp) MapComp = (await import('../components/StationMap.svelte')).default;
   }
 
+  async function changeLocation() {
+    if (!MapComp) {
+      await loadMap();
+    }
+    // Smoothly focus the floating search bar on the map tile
+    setTimeout(() => {
+      if (mapInstance) {
+        mapInstance.focusSearch();
+      }
+    }, 50);
+  }
+
   async function openMap() {
     await loadMap();
-    showSearch = false;
     showMap = true;
   }
 
@@ -116,7 +126,7 @@
     km={$selection.km}
     distanceUnit={$settings.distanceUnit}
     {isFav}
-    on:change={() => (showSearch = true)}
+    on:change={changeLocation}
     on:togglefav={onToggleFav}
   />
 
@@ -200,6 +210,7 @@
           {#key `${$selection.point.lat}:${$selection.point.lon}`}
             <svelte:component
               this={MapComp}
+              bind:this={mapInstance}
               mode="inline"
               lat={$selection.point.lat}
               lon={$selection.point.lon}
@@ -231,9 +242,6 @@
   </footer>
 {/if}
 
-{#if showSearch}
-  <LocationSearch on:close={() => (showSearch = false)} on:openmap={openMap} />
-{/if}
 
 {#if showMap && MapComp && $selection}
   <svelte:component

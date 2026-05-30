@@ -2,8 +2,13 @@
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import maplibregl from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
-  import { loadIndex } from '../engine/stations';
-  import { selectPoint, selectStationId } from '../stores/selection';
+  import { loadIndex, searchByName } from '../engine/stations';
+  import type { IndexEntry } from '../engine/types';
+  import { selectPoint, selectStationId, selectFavorite } from '../stores/selection';
+  import { geocode, geoLabel, type GeoResult } from '../sources/geocode';
+  import { favorites, type Favorite } from '../stores/favorites';
+  import { settings } from '../stores/settings';
+  import { formatDistance } from '../engine/units';
 
   export let lat = -8.7;
   export let lon = 115.2;
@@ -21,6 +26,120 @@
   let pinMarker: maplibregl.Marker | undefined;
   let picked: { lat: number; lon: number } | null = null;
   let busy = false;
+
+  // Search functionality variables
+  let query = '';
+  let index: IndexEntry[] = [];
+  let placeResults: GeoResult[] = [];
+  let geoError = '';
+  let busyGeolocation = false;
+  let isFocused = false;
+  let searchInputEl: HTMLInputElement;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let highlightActive = false;
+
+  $: stationResults = query.trim() ? searchByName(index, query.trim(), 12) : [];
+
+  function onInput() {
+    clearTimeout(timer);
+    timer = setTimeout(runSearch, 250);
+  }
+
+  async function runSearch() {
+    const q = query.trim();
+    placeResults = [];
+    geoError = '';
+    if (q.length >= 3 && navigator.onLine) {
+      try {
+        placeResults = await geocode(q, 6);
+      } catch {
+        geoError = 'Place search unavailable';
+      }
+    } else if (q.length >= 3 && !navigator.onLine) {
+      geoError = 'Offline — showing stations only';
+    }
+  }
+
+  function clearSearch() {
+    query = '';
+    placeResults = [];
+    geoError = '';
+    searchInputEl?.focus();
+  }
+
+  export function focusSearch() {
+    isFocused = true;
+    searchInputEl?.focus();
+    
+    // Smoothly scroll the map container into view
+    const cardEl = searchInputEl?.closest('.card');
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      searchInputEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Trigger visual highlight effect
+    highlightActive = true;
+    setTimeout(() => {
+      highlightActive = false;
+    }, 1500);
+  }
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      geoError = 'Geolocation is not available';
+      return;
+    }
+    busyGeolocation = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const latVal = pos.coords.latitude;
+        const lonVal = pos.coords.longitude;
+        markLocation({ lat: latVal, lon: lonVal });
+        if (map) {
+          map.easeTo({ center: [lonVal, latVal], zoom: 12, duration: 450 });
+        }
+        void run(() => selectPoint(latVal, lonVal));
+        busyGeolocation = false;
+        isFocused = false;
+        query = '';
+      },
+      (err) => {
+        geoError = err.message;
+        busyGeolocation = false;
+      },
+      { enableHighAccuracy: false, timeout: 10_000 },
+    );
+  }
+
+  function pickStation(s: IndexEntry) {
+    void run(() => selectStationId(s.id, s.name));
+    if (map) {
+      map.easeTo({ center: [s.lon, s.lat], zoom: 12, duration: 450 });
+    }
+    query = '';
+    isFocused = false;
+  }
+
+  function pickFavorite(f: Favorite) {
+    void run(() => selectFavorite(f));
+    if (map) {
+      map.easeTo({ center: [f.lon, f.lat], zoom: 12, duration: 450 });
+    }
+    query = '';
+    isFocused = false;
+  }
+
+  function pickPlace(p: GeoResult) {
+    markLocation({ lat: p.lat, lon: p.lon });
+    if (map) {
+      map.easeTo({ center: [p.lon, p.lat], zoom: 12, duration: 450 });
+    }
+    void run(() => selectPoint(p.lat, p.lon, geoLabel(p)));
+    query = '';
+    isFocused = false;
+  }
 
   function makeCurrentMarker() {
     const el = document.createElement('div');
@@ -134,7 +253,7 @@
       .setLngLat([stationLon ?? lon, stationLat ?? lat])
       .addTo(map);
 
-    const index = await loadIndex();
+    index = await loadIndex();
     const data = {
       type: 'FeatureCollection',
       features: index.map((s) => ({
@@ -250,6 +369,101 @@
       <span class="hint">Tap a station, or drop a pin anywhere</span>
     </header>
   {/if}
+
+  {#if isFocused}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="search-backdrop" on:click={() => (isFocused = false)}></div>
+  {/if}
+
+  <div class="map-search-container" class:highlighted={highlightActive}>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input
+        bind:this={searchInputEl}
+        type="search"
+        placeholder="Search station, town, beach..."
+        bind:value={query}
+        on:input={onInput}
+        on:focus={() => (isFocused = true)}
+        autocomplete="off"
+        data-testid="map-search-input"
+      />
+      {#if query}
+        <button class="clear-btn" type="button" on:click={clearSearch} aria-label="Clear search">✕</button>
+      {/if}
+    </div>
+
+    {#if isFocused}
+      <div class="search-dropdown-wrapper" data-testid="search-results-dropdown">
+        <button
+          class="search-dropdown-btn"
+          type="button"
+          data-testid="use-my-location"
+          disabled={busyGeolocation}
+          on:click={useMyLocation}
+        >
+          <span>📍</span>
+          <span>{busyGeolocation ? 'Locating…' : 'Use my location'}</span>
+        </button>
+
+        {#if geoError}
+          <p class="search-hint" style="color: var(--falling);">{geoError}</p>
+        {/if}
+
+        {#if !query && $favorites && $favorites.length}
+          <div class="search-section-title">Favorites</div>
+          <ul class="search-dropdown-list" data-testid="favorites">
+            {#each $favorites as f}
+              <li>
+                <button class="search-dropdown-item" type="button" on:click={() => pickFavorite(f)}>
+                  <span class="search-item-name"><span class="star">★</span>{f.label}</span>
+                  {#if f.stationName && f.stationName !== f.label}
+                    <span class="search-item-sub">
+                      {f.stationName}{f.km != null ? ` · ${formatDistance(f.km, $settings.distanceUnit)} away` : ''}
+                    </span>
+                  {/if}
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if stationResults.length}
+          <div class="search-section-title">Tide Stations</div>
+          <ul class="search-dropdown-list">
+            {#each stationResults as s}
+              <li>
+                <button class="search-dropdown-item" type="button" data-testid="station-result" on:click={() => pickStation(s)}>
+                  <span class="search-item-name">⚓ {s.name}</span>
+                  <span class="search-item-sub">{[s.region, s.country].filter(Boolean).join(', ')}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if placeResults.length}
+          <div class="search-section-title">Places</div>
+          <ul class="search-dropdown-list">
+            {#each placeResults as p}
+              <li>
+                <button class="search-dropdown-item" type="button" data-testid="place-result" on:click={() => pickPlace(p)}>
+                  <span class="search-item-name">🗺️ {p.name}</span>
+                  <span class="search-item-sub">{[p.admin1, p.country].filter(Boolean).join(', ')}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if query.trim().length >= 3 && !stationResults.length && !placeResults.length}
+          <p class="search-hint">No matches found</p>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
   <div class="map" bind:this={container}></div>
   {#if picked}
     <button class="use-pin" type="button" data-testid="use-pin" disabled={busy} on:click={useDroppedPin}>
@@ -358,4 +572,205 @@
   .use-pin:active:not(:disabled) {
     transform: translateX(-50%) scale(0.98);
   }
+
+  .map-search-container {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    max-width: 24rem;
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: auto;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+  }
+  
+  .map-overlay .map-search-container {
+    top: calc(4.5rem + env(safe-area-inset-top));
+  }
+  
+  /* Highlight effect for focusSearch method */
+  .map-search-container.highlighted {
+    transform: scale(1.04);
+  }
+  .map-search-container.highlighted .search-bar {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent), 0 10px 25px rgba(0, 0, 0, 0.35);
+  }
+  
+  .search-bar {
+    display: flex;
+    align-items: center;
+    background: color-mix(in srgb, var(--surface) 85%, transparent 15%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  
+  .search-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent), 0 4px 15px rgba(0, 0, 0, 0.25);
+  }
+  
+  .search-icon {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-right: 0.5rem;
+    user-select: none;
+  }
+  
+  .search-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 0.92rem;
+    padding: 0.25rem 0;
+    min-height: 24px;
+  }
+  
+  .search-bar input::placeholder {
+    color: var(--muted);
+    opacity: 0.8;
+  }
+  
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.2rem;
+    margin-left: 0.35rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    transition: background 0.15s, color 0.15s;
+  }
+  
+  .clear-btn:hover {
+    background: color-mix(in srgb, var(--surface) 70%, var(--text) 30%);
+    color: var(--text);
+  }
+  
+  .search-backdrop {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    z-index: 100;
+  }
+  
+  .search-dropdown-wrapper {
+    background: color-mix(in srgb, var(--surface) 90%, transparent 10%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    max-height: 14rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem;
+  }
+  
+  .search-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    padding: 0.35rem 0.5rem 0.15rem;
+    margin: 0;
+  }
+  
+  .search-dropdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  
+  .search-dropdown-item {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    cursor: pointer;
+    color: var(--text);
+    transition: background 0.15s;
+  }
+  
+  .search-dropdown-item:hover {
+    background: color-mix(in srgb, var(--surface) 75%, var(--text) 25%);
+  }
+  
+  .search-item-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  
+  .search-item-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  
+  .search-dropdown-btn {
+    width: 100%;
+    text-align: left;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: background 0.15s, filter 0.15s;
+  }
+  
+  .search-dropdown-btn:hover {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    filter: brightness(1.15);
+  }
+  
+  .search-dropdown-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .search-hint {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    margin: 0;
+  }
+
+  .star {
+    color: var(--accent);
+    margin-right: 0.25rem;
+  }
 </style>
+

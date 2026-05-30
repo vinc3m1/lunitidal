@@ -44,7 +44,7 @@
       class="change"
       type="button"
       data-testid="change-location"
-      on:click={() => dispatch('change')}>Change</button
+      on:click={() => dispatch('change')}>Search</button
     >
   </div>
 </header>
