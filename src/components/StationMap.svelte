@@ -384,7 +384,6 @@
     <div
       class="map-search-container"
       class:highlighted={highlightActive}
-      class:wide-search={query.trim() && stationResults.length && placeResults.length}
     >
       <div class="search-bar">
         <span class="search-icon">🔍</span>
@@ -594,13 +593,7 @@
     flex-direction: column;
     gap: 0.5rem;
     pointer-events: auto;
-    transition: max-width 0.25s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
-  }
-
-  @media (min-width: 500px) {
-    .map-search-container.wide-search {
-      max-width: 34rem;
-    }
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
   }
   
   .map-overlay .map-search-container {
@@ -737,6 +730,13 @@
     .search-dropdown-wrapper.has-dual-results {
       overflow-y: hidden;
       max-height: none;
+      min-width: min(34rem, calc(100vw - 3rem));
+      width: max-content;
+      /* Break out of the flex container so the search bar keeps its width */
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 0.5rem;
     }
     
     .search-dropdown-wrapper.has-dual-results .search-results-grid.dual-columns {
@@ -882,11 +882,7 @@
     max-width: calc(100% - 6rem);
   }
 
-  @media (min-width: 500px) {
-    .map-overlay .map-search-container.wide-search {
-      max-width: min(40rem, calc(100% - 6rem));
-    }
-  }
+
 
   .shrink-btn-floating {
     position: absolute;
