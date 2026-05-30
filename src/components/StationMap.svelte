@@ -418,11 +418,6 @@
                 <li>
                   <button class="search-dropdown-item" type="button" on:click={() => pickFavorite(f)}>
                     <span class="search-item-name"><span class="star">★</span>{f.label}</span>
-                    {#if f.stationName && f.stationName !== f.label}
-                      <span class="search-item-sub">
-                        {f.stationName}{f.km != null ? ` · ${formatDistance(f.km, $settings.distanceUnit)} away` : ''}
-                      </span>
-                    {/if}
                   </button>
                 </li>
               {/each}

@@ -3,7 +3,7 @@
   import { link } from 'svelte-spa-router';
   import { settings } from '../stores/settings';
   import { selection, selectionStatus } from '../stores/selection';
-  import { favoriteId, favorites, isFavorite, toggleFavorite } from '../stores/favorites';
+  import { favorites, isFavorite, toggleFavorite } from '../stores/favorites';
   import { addDays, createModel, datumOffset, formatDay, startOfDayInTz, tzAbbrev } from '../engine';
   import type { Extreme, TidePoint } from '../engine/types';
   import type { TideModel } from '../engine/predictor';
@@ -86,16 +86,16 @@
   $: scrubLevel = levelAtDisplay(scrubDate);
   $: isNow = Math.abs(scrubMs - now.getTime()) < 60_000;
 
-  $: favKey = $selection ? favoriteId($selection.point.lat, $selection.point.lon) : '';
+  $: favKey = $selection?.station?.id ?? '';
   $: isFav = $favorites && favKey ? isFavorite(favKey) : false;
 
   function onToggleFav() {
     if (!$selection) return;
     toggleFavorite({
-      id: favKey,
-      label: $selection.label,
-      lat: $selection.point.lat,
-      lon: $selection.point.lon,
+      id: $selection.station.id,
+      label: $selection.station.name,
+      lat: $selection.station.latitude,
+      lon: $selection.station.longitude,
     });
   }
 

@@ -4,23 +4,13 @@ import type { IndexEntry } from '../engine/types';
 import { persisted } from './persisted';
 
 export interface Favorite {
-  id: string;
-  label: string;
+  id: string; // station.id
+  label: string; // station.name
   lat: number;
   lon: number;
-  /** The tide station this favorite resolved to (kept so it never silently drifts). */
-  stationId?: string;
-  stationName?: string;
-  /** Distance (km) from the saved point to that station; absent for exact station picks. */
-  km?: number;
 }
 
 export const favorites = persisted<Favorite[]>('lunitidal:favorites', []);
-
-/** Stable id from coordinates (~11 m precision) so the same spot toggles cleanly. */
-export function favoriteId(lat: number, lon: number): string {
-  return `${lat.toFixed(4)},${lon.toFixed(4)}`;
-}
 
 export function isFavorite(id: string): boolean {
   return get(favorites).some((f) => f.id === id);
@@ -39,28 +29,57 @@ export function isLegacyLabel(label: string | null | undefined): boolean {
   return !label || LEGACY_LABEL.test(label.trim());
 }
 
-function needsMigration(f: Favorite): boolean {
-  return isLegacyLabel(f.label) || !f.stationId;
+function needsMigration(f: any): boolean {
+  return f.id.includes(',') || isLegacyLabel(f.label);
 }
 
 /**
- * Pure: backfill the resolved station (id/name/distance) onto favorites and replace any
- * legacy label with the station name. Also re-keys the id to the current precision.
+ * Pure: backfill the resolved station ID and name onto favorites and replace any
+ * legacy label with the station name. Also deduplicates by the new station ID.
  */
-export function healFavoriteLabels(list: Favorite[], index: IndexEntry[]): Favorite[] {
-  return list.map((f) => {
-    if (!needsMigration(f)) return f;
-    const [near] = nearest(index, f.lat, f.lon, 1);
-    if (!near) return f;
-    return {
-      ...f,
-      id: favoriteId(f.lat, f.lon),
-      label: isLegacyLabel(f.label) ? near.station.name : f.label,
-      stationId: near.station.id,
-      stationName: near.station.name,
-      km: Math.round(near.km * 10) / 10,
-    };
-  });
+export function healFavoriteLabels(list: any[], index: IndexEntry[]): Favorite[] {
+  const healed: Favorite[] = [];
+  const seenIds = new Set<string>();
+
+  for (const f of list) {
+    if (!needsMigration(f)) {
+      if (!seenIds.has(f.id)) {
+        seenIds.add(f.id);
+        healed.push({
+          id: f.id,
+          label: f.label,
+          lat: f.lat,
+          lon: f.lon,
+        });
+      }
+    } else {
+      const [near] = nearest(index, f.lat, f.lon, 1);
+      if (near) {
+        const id = near.station.id;
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          healed.push({
+            id,
+            label: isLegacyLabel(f.label) ? near.station.name : f.label,
+            lat: near.station.lat,
+            lon: near.station.lon,
+          });
+        }
+      } else {
+        if (!seenIds.has(f.id)) {
+          seenIds.add(f.id);
+          healed.push({
+            id: f.id,
+            label: f.label,
+            lat: f.lat,
+            lon: f.lon,
+          });
+        }
+      }
+    }
+  }
+
+  return healed;
 }
 
 /** One-time migration: heal legacy labels and backfill station info on old favorites. */

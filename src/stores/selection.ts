@@ -110,10 +110,10 @@ export async function selectStationId(id: string, label: string): Promise<void> 
 
 /** Re-select a saved favorite by its stored station (stable — no re-snapping). */
 export async function selectFavorite(fav: Favorite): Promise<void> {
-  if (fav.stationId) {
+  if (fav.id) {
     try {
-      const station = await loadStation(fav.stationId);
-      commit({ station, label: fav.label, km: fav.km ?? null, point: { lat: fav.lat, lon: fav.lon } });
+      const station = await loadStation(fav.id);
+      commit({ station, label: fav.label, km: null, point: { lat: fav.lat, lon: fav.lon } });
       return;
     } catch {
       /* saved station unavailable — re-snap from the point */
