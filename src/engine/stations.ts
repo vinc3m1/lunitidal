@@ -61,7 +61,12 @@ export function searchByName(index: IndexEntry[], query: string, limit = 25): In
 export async function loadStation(id: string): Promise<Station> {
   const res = await fetch(`${base()}data/stations/${stationFileSlug(id)}.json`);
   if (!res.ok) throw new Error(`Failed to load station ${id} (${res.status})`);
-  return (await res.json()) as Station;
+  const station = (await res.json()) as Station;
+
+  if (station.type === 'subordinate' && station.offsets?.reference) {
+    station.referenceStation = await loadStation(station.offsets.reference);
+  }
+  return station;
 }
 
 /** The bundled, precached seed station (Benoa) — available offline on first launch. */

@@ -70,20 +70,23 @@ function pickBenoa(list: Station[]): Station | undefined {
 }
 
 async function main() {
-  // TODO: Add future support for subordinate stations (stations without harmonic constituents).
-  // These stations are currently filtered out because the @neaps/tide-predictor library only supports
-  // reference stations with harmonic_constituents. To support them in the future:
-  // 1. Include subordinate stations in stations-index.json.
-  // 2. In the prediction/store layer, when a subordinate station is chosen, load its specified
-  //    reference station (via s.offsets.reference), compute predictions for the reference, and
-  //    apply the subordinate's time/height offsets to the high/low extremes.
-  // 3. For the tide chart, warp/stretch the reference station's continuous curve to hit the
-  //    skewed subordinate extremes coordinates exactly.
-  // For now, filtering them out is extremely robust and safely snaps users to the nearest high-quality reference station.
-  const qualityStations = stations.filter(
-    (s) => s.type === 'reference' && Array.isArray(s.harmonic_constituents) && s.harmonic_constituents.length > 0,
+  const refIds = new Set(
+    stations
+      .filter((s) => s.type === 'reference' && Array.isArray(s.harmonic_constituents) && s.harmonic_constituents.length > 0)
+      .map((s) => s.id),
   );
-  console.log(`Extracting from @neaps/tide-database: ${qualityStations.length} quality reference stations`);
+
+  // Keep all high-quality reference stations plus subordinate stations referencing them
+  const qualityStations = stations.filter((s) => {
+    if (s.type === 'reference') {
+      return Array.isArray(s.harmonic_constituents) && s.harmonic_constituents.length > 0;
+    }
+    if (s.type === 'subordinate') {
+      return s.offsets?.reference && refIds.has(s.offsets.reference);
+    }
+    return false;
+  });
+  console.log(`Extracting from @neaps/tide-database: ${qualityStations.length} stations (${refIds.size} reference, ${qualityStations.length - refIds.size} subordinate)`);
 
   // Fresh per-station dir each run.
   await rm(STATIONS_DIR, { recursive: true, force: true });

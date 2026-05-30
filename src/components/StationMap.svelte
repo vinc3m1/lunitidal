@@ -10,6 +10,7 @@
   export let stationLat: number | null = null;
   export let stationLon: number | null = null;
   export let stationName = 'Tide station';
+  export let stationType: 'reference' | 'subordinate' | null = null;
   export let mode: 'overlay' | 'inline' = 'overlay';
 
   const dispatch = createEventDispatcher<{ close: void }>();
@@ -32,7 +33,7 @@
 
   function makeStationMarker() {
     const el = document.createElement('div');
-    el.className = 'selected-station-marker';
+    el.className = `selected-station-marker${stationType === 'subordinate' ? ' subordinate' : ''}`;
     el.dataset.testid = 'selected-station-marker';
     el.title = stationName;
     el.setAttribute('aria-label', stationName);
@@ -119,7 +120,7 @@
       features: index.map((s) => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
-        properties: { id: s.id, name: s.name },
+        properties: { id: s.id, name: s.name, type: s.type },
       })),
     };
 
@@ -131,8 +132,18 @@
         type: 'circle',
         source: 'stations',
         paint: {
-          'circle-radius': 5,
-          'circle-color': '#0a7ea4',
+          'circle-radius': [
+            'match',
+            ['get', 'type'],
+            'subordinate', 4,
+            5
+          ],
+          'circle-color': [
+            'match',
+            ['get', 'type'],
+            'subordinate', '#c9711f',
+            '#0a7ea4'
+          ],
           'circle-stroke-width': 1.5,
           'circle-stroke-color': '#ffffff',
         },
@@ -170,6 +181,12 @@
   });
 
   $: if (map) fitSelection(map, lat, lon, stationLat, stationLon, mode);
+  $: if (stationMarker && stationType) {
+    const el = stationMarker.getElement();
+    if (el) {
+      el.className = `selected-station-marker${stationType === 'subordinate' ? ' subordinate' : ''}`;
+    }
+  }
 
   onDestroy(() => map?.remove());
 
@@ -270,6 +287,13 @@
     clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
     box-shadow:
       0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent),
+      0 2px 10px rgba(0, 0, 0, 0.45);
+  }
+  :global(.selected-station-marker.subordinate) {
+    background: var(--falling);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--falling) 30%, transparent),
       0 2px 10px rgba(0, 0, 0, 0.45);
   }
   :global(.pending-location-marker) {

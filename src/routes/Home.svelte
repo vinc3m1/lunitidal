@@ -43,7 +43,7 @@
   $: station = $selection?.station ?? null;
   $: if (station && station.id !== modelStationId) {
     try {
-      model = createModel(station.harmonic_constituents);
+      model = createModel(station);
       modelStationId = station.id;
       scrubMs = Date.now();
       dayOffset = 0;
@@ -188,6 +188,7 @@
               stationLat={$selection.station.latitude}
               stationLon={$selection.station.longitude}
               stationName={$selection.station.name}
+              stationType={$selection.station.type}
             />
           {/key}
         {:else}
@@ -224,6 +225,7 @@
     stationLat={$selection.station.latitude}
     stationLon={$selection.station.longitude}
     stationName={$selection.station.name}
+    stationType={$selection.station.type}
     on:close={() => (showMap = false)}
   />
 {/if}

@@ -67,3 +67,77 @@ describe('Benoa predictor', () => {
     }
   });
 });
+
+const subordinateStation: Station = {
+  id: 'test/subordinate',
+  name: 'Test Subordinate Beach',
+  continent: 'Asia',
+  country: 'Indonesia',
+  region: 'Bali',
+  timezone: 'Asia/Makassar',
+  disclaimers: '',
+  type: 'subordinate',
+  latitude: -8.78,
+  longitude: 115.25,
+  source: benoa.source,
+  license: benoa.license,
+  datums: benoa.datums,
+  chart_datum: benoa.chart_datum,
+  offsets: {
+    reference: benoa.id,
+    height: {
+      type: 'ratio',
+      high: 0.8,
+      low: 0.8,
+    },
+    time: {
+      high: 20, // 20 minutes later
+      low: 10,  // 10 minutes later
+    },
+  },
+  referenceStation: benoa,
+};
+
+const subModel = createModel(subordinateStation);
+
+describe('Subordinate predictor', () => {
+  it('correctly maps extremes using time and height offsets', () => {
+    const refExtremes = model.extremes(dayStart, dayEnd);
+    const subExtremes = subModel.extremes(dayStart, dayEnd);
+
+    // Filter to matching overlaps
+    expect(subExtremes.length).toBe(refExtremes.length);
+
+    for (let i = 0; i < refExtremes.length; i++) {
+      const r = refExtremes[i];
+      const s = subExtremes[i];
+
+      expect(s.high).toBe(r.high);
+      expect(s.low).toBe(r.low);
+
+      // Verify time offset
+      const expectedTimeShift = r.high ? 20 : 10;
+      const actualTimeShift = (s.time.getTime() - r.time.getTime()) / 60_000;
+      expect(actualTimeShift).toBeCloseTo(expectedTimeShift, 1);
+
+      // Verify height offset (ratio of 0.8)
+      expect(s.level).toBeCloseTo(r.level * 0.8, 4);
+    }
+  });
+
+  it('levelAt matches the calculated subordinate extremes at extreme times', () => {
+    const subExtremes = subModel.extremes(dayStart, dayEnd);
+    for (const e of subExtremes) {
+      expect(subModel.levelAt(e.time)).toBeCloseTo(e.level, 3);
+    }
+  });
+
+  it('generates a continuous, smooth warped curve', () => {
+    const pts = subModel.timeline(dayStart, dayEnd, 600);
+    expect(pts.length).toBe(600);
+    for (const p of pts) {
+      expect(Number.isFinite(p.level)).toBe(true);
+      expect(Math.abs(p.level)).toBeLessThan(5);
+    }
+  });
+});

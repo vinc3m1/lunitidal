@@ -73,3 +73,24 @@ test('dropping a pin on the map displays the "Use this location" button', async 
   const attrib = page.getByTestId('map-sheet').locator('.maplibregl-ctrl-attrib');
   await expect(attrib).toHaveClass(/maplibregl-compact/);
 });
+
+test('searching and selecting a subordinate station works without crashes and displays offsets', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('search-input').fill('Kashega Bay');
+  
+  // Wait for the station result to appear and click it
+  await page.getByTestId('station-result').first().click();
+  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  
+  // Verify that the location is set to Kashega Bay
+  const bar = page.locator('header.locbar');
+  await expect(bar.locator('.name')).toHaveText('Kashega Bay');
+
+  // Verify that the tide predictions are visible (extremes table loaded successfully)
+  await expect(page.locator('.extremes li').first()).toBeVisible();
+
+  // Navigate to Detail view and verify that Subordinate Offsets are displayed
+  await page.getByTestId('nav-detail').click();
+  await expect(page.getByRole('heading', { name: 'Subordinate Offsets' })).toBeVisible();
+});

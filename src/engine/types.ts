@@ -22,6 +22,19 @@ export interface StationLicense {
   notes?: string;
 }
 
+export interface SubordinateOffsets {
+  reference: string;
+  height: {
+    type: 'ratio' | 'fixed';
+    high: number;
+    low: number;
+  };
+  time: {
+    high: number;
+    low: number;
+  };
+}
+
 /** Full station record (one per `public/data/stations/<slug>.json`). */
 export interface Station {
   id: string;
@@ -36,11 +49,12 @@ export interface Station {
   longitude: number;
   source: StationSource;
   license: StationLicense;
-  harmonic_constituents: HarmonicConstituent[];
-  offsets?: unknown;
+  harmonic_constituents?: HarmonicConstituent[];
+  offsets?: SubordinateOffsets;
   datums: Record<string, number>;
   chart_datum: string;
   epoch?: { start: string; end: string };
+  referenceStation?: Station;
 }
 
 /** Slim index entry (discovery only) — see scripts/build-station-index.ts. */

@@ -9,7 +9,7 @@
   $: sel = $selection;
   $: station = sel?.station ?? null;
   $: datums = station ? availableDatums(station) : [];
-  $: constituents = station
+  $: constituents = station?.harmonic_constituents
     ? [...station.harmonic_constituents].sort((a, b) => b.amplitude - a.amplitude)
     : [];
 
@@ -82,24 +82,47 @@
     </dl>
   </section>
 
-  <section class="card">
-    <h3>Harmonic constituents ({constituents.length})</h3>
-    <p class="muted">The on-device model sums these to predict the curve.</p>
-    <table data-testid="constituents">
-      <thead>
-        <tr><th>Name</th><th>Amplitude (m)</th><th>Phase (°)</th></tr>
-      </thead>
-      <tbody>
-        {#each constituents as c}
-          <tr>
-            <td>{c.name}</td>
-            <td>{c.amplitude.toFixed(3)}</td>
-            <td>{c.phase.toFixed(1)}</td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </section>
+  {#if station.type === 'subordinate' && station.offsets}
+    <section class="card">
+      <h3>Subordinate Offsets</h3>
+      <p class="muted">Tides calculated on-device by applying time and height offsets to the reference station <strong>{station.referenceStation?.name || station.offsets.reference}</strong>.</p>
+      <dl>
+        <dt>Reference Station</dt>
+        <dd>{station.referenceStation?.name || station.offsets.reference}</dd>
+        <dt>High tide shift</dt>
+        <dd>{station.offsets.time.high > 0 ? `+${station.offsets.time.high}` : station.offsets.time.high} min</dd>
+        <dt>Low tide shift</dt>
+        <dd>{station.offsets.time.low > 0 ? `+${station.offsets.time.low}` : station.offsets.time.low} min</dd>
+        <dt>Height offset type</dt>
+        <dd>{station.offsets.height.type === 'ratio' ? 'Ratio (Multiplier)' : 'Fixed offset'}</dd>
+        <dt>High tide offset</dt>
+        <dd>{station.offsets.height.type === 'ratio' ? `×${station.offsets.height.high.toFixed(2)}` : `${station.offsets.height.high > 0 ? `+${station.offsets.height.high}` : station.offsets.height.high} m`}</dd>
+        <dt>Low tide offset</dt>
+        <dd>{station.offsets.height.type === 'ratio' ? `×${station.offsets.height.low.toFixed(2)}` : `${station.offsets.height.low > 0 ? `+${station.offsets.height.low}` : station.offsets.height.low} m`}</dd>
+      </dl>
+    </section>
+  {/if}
+
+  {#if constituents.length}
+    <section class="card">
+      <h3>Harmonic constituents ({constituents.length})</h3>
+      <p class="muted">The on-device model sums these to predict the curve.</p>
+      <table data-testid="constituents">
+        <thead>
+          <tr><th>Name</th><th>Amplitude (m)</th><th>Phase (°)</th></tr>
+        </thead>
+        <tbody>
+          {#each constituents as c}
+            <tr>
+              <td>{c.name}</td>
+              <td>{c.amplitude.toFixed(3)}</td>
+              <td>{c.phase.toFixed(1)}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </section>
+  {/if}
 
   <footer>
     <p>Astronomical tide prediction only — not for navigation.</p>

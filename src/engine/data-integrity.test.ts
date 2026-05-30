@@ -9,9 +9,12 @@ describe('station data integrity', () => {
     expect(index.length).toBeGreaterThan(3000);
   });
 
-  it('every station in the index is a reference station and has constituents', () => {
-    const invalidTypes = index.filter((s) => s.type !== 'reference');
-    expect(invalidTypes).toEqual([]);
+  it('every station in the index is a valid type and has correct attributes', () => {
+    const invalidStations = index.filter((s) => s.type !== 'reference' && s.type !== 'subordinate');
+    expect(invalidStations).toEqual([]);
+
+    const subordinateStations = index.filter((s) => s.type === 'subordinate');
+    expect(subordinateStations.length).toBeGreaterThan(1000); // Verify we loaded subordinates successfully
   });
 
   it('there are no duplicate station IDs', () => {
@@ -24,8 +27,10 @@ describe('station data integrity', () => {
     const stationsDir = path.resolve(__dirname, '../../public/data/stations');
     expect(fs.existsSync(stationsDir)).toBe(true);
 
-    // Sample 20 random stations to keep the file check extremely fast but highly representative
-    const sampleSize = 50;
+    const refIds = new Set(index.filter((s) => s.type === 'reference').map((s) => s.id));
+
+    // Sample random stations to keep the file check extremely fast but highly representative
+    const sampleSize = 100;
     const shuffled = [...index].sort(() => 0.5 - Math.random());
     const samples = shuffled.slice(0, sampleSize);
 
@@ -36,9 +41,19 @@ describe('station data integrity', () => {
 
       const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       expect(content.id).toBe(station.id);
-      expect(content.type).toBe('reference');
-      expect(Array.isArray(content.harmonic_constituents)).toBe(true);
-      expect(content.harmonic_constituents.length).toBeGreaterThan(0);
+      expect(content.type).toBe(station.type);
+
+      if (station.type === 'reference') {
+        expect(Array.isArray(content.harmonic_constituents)).toBe(true);
+        expect(content.harmonic_constituents.length).toBeGreaterThan(0);
+      } else {
+        expect(content.offsets).toBeDefined();
+        expect(content.offsets.reference).toBeDefined();
+        // Check that the referenced station is in our reference index
+        expect(refIds.has(content.offsets.reference)).toBe(true);
+        expect(content.offsets.time).toBeDefined();
+        expect(content.offsets.height).toBeDefined();
+      }
     }
   });
 });
