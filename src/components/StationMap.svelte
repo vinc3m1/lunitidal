@@ -17,6 +17,7 @@
   export let stationName = 'Tide station';
   export let stationType: 'reference' | 'subordinate' | null = null;
   export let mode: 'overlay' | 'inline' = 'overlay';
+  export let hideSearch = false;
 
   const dispatch = createEventDispatcher<{ close: void }>();
   let container: HTMLDivElement;
@@ -361,21 +362,7 @@
   class:map-inline={mode === 'inline'}
   data-testid={mode === 'overlay' ? 'map-sheet' : 'home-map'}
 >
-  {#if mode === 'overlay'}
-    <header class="map-overlay-header">
-      <span class="hint">Tap a station, or drop a pin anywhere</span>
-      <button class="x shrink-btn" type="button" data-testid="map-close" on:click={() => dispatch('close')} aria-label="Close map">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="4 14 10 14 10 20" />
-          <polyline points="20 10 14 10 14 4" />
-          <line x1="14" y1="10" x2="21" y2="3" />
-          <line x1="10" y1="14" x2="3" y2="21" />
-        </svg>
-      </button>
-    </header>
-  {/if}
-
-  {#if mode === 'inline'}
+  {#if !hideSearch}
     {#if isFocused}
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -471,6 +458,17 @@
     </div>
   {/if}
 
+  {#if mode === 'overlay'}
+    <button class="shrink-btn-floating" type="button" data-testid="map-close" on:click={() => dispatch('close')} aria-label="Close map">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 14 10 14 10 20" />
+        <polyline points="20 10 14 10 14 4" />
+        <line x1="14" y1="10" x2="21" y2="3" />
+        <line x1="10" y1="14" x2="3" y2="21" />
+      </svg>
+    </button>
+  {/if}
+
   <div class="map" bind:this={container}></div>
   {#if picked}
     <button class="use-pin" type="button" data-testid="use-pin" disabled={busy} on:click={useDroppedPin}>
@@ -495,26 +493,6 @@
     overflow: hidden;
     border-radius: 0.75rem;
     background: var(--surface);
-  }
-  header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem calc(0.5rem);
-    padding-top: calc(0.5rem + env(safe-area-inset-top));
-  }
-  .x {
-    background: var(--surface);
-    color: var(--text);
-    border: none;
-    border-radius: 999px;
-    min-width: 44px;
-    min-height: 44px;
-    font-size: 1rem;
-  }
-  .hint {
-    color: var(--muted);
-    font-size: 0.9rem;
   }
   .map {
     flex: 1;
@@ -786,35 +764,36 @@
     appearance: none;
   }
 
-  .map-overlay-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    padding-top: calc(0.5rem + env(safe-area-inset-top));
-    background: var(--bg);
-    border-bottom: 1px solid color-mix(in srgb, var(--muted) 15%, transparent);
-    width: 100%;
-    z-index: 10;
+  .map-overlay .map-search-container {
+    top: calc(1rem + env(safe-area-inset-top));
+    left: 1rem;
+    right: 5rem;
+    max-width: calc(100% - 6rem);
   }
 
-  .shrink-btn {
-    background: var(--surface);
+  .shrink-btn-floating {
+    position: absolute;
+    top: calc(1rem + env(safe-area-inset-top));
+    right: 1rem;
+    z-index: 101;
+    background: color-mix(in srgb, var(--surface) 85%, transparent 15%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: var(--text);
-    border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+    border-radius: 0.75rem;
     min-width: 44px;
     min-height: 44px;
     display: grid;
     place-items: center;
     cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
     transition: background-color 0.15s ease, transform 0.1s ease;
   }
-  .shrink-btn:hover {
-    background: color-mix(in srgb, var(--surface) 80%, var(--text) 20%);
+  .shrink-btn-floating:hover {
+    background: color-mix(in srgb, var(--surface) 70%, var(--text) 30%);
   }
-  .shrink-btn:active {
+  .shrink-btn-floating:active {
     transform: scale(0.95);
   }
 </style>

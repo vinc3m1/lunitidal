@@ -217,6 +217,7 @@
               this={MapComp}
               bind:this={mapInstance}
               mode="inline"
+              hideSearch={showMap}
               lat={$selection.point.lat}
               lon={$selection.point.lon}
               stationLat={$selection.station.latitude}
@@ -251,6 +252,8 @@
 {#if showMap && MapComp && $selection}
   <svelte:component
     this={MapComp}
+    mode="overlay"
+    hideSearch={false}
     lat={$selection.point.lat}
     lon={$selection.point.lon}
     stationLat={$selection.station.latitude}

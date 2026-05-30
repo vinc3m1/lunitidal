@@ -191,15 +191,25 @@ test('online place search with state abbreviation matches "Oakland CA" successfu
   await expect(result).toContainText('California');
 });
 
-test('only one search bar exists and is hidden when expanded', async ({ page }) => {
+test('search bar moves to overlay when expanded and back to inline when shrunk', async ({ page }) => {
   await page.goto('/');
-  // 1. Inline map search is visible
-  await expect(page.getByTestId('map-search-input')).toBeVisible();
+  
+  // 1. Initially, search bar is visible in inline map card
+  const inlineSearch = page.locator('[data-testid="home-map"] [data-testid="map-search-input"]');
+  await expect(inlineSearch).toBeVisible();
   
   // 2. Expand map
   await page.getByTestId('expand-map').click();
   await expect(page.getByTestId('map-sheet')).toBeVisible();
   
-  // 3. No search input exists inside the expanded map sheet (it covers the page and there's no duplicate input)
-  await expect(page.getByTestId('map-sheet').getByTestId('map-search-input')).toHaveCount(0);
+  // 3. Search bar is now visible at the top of the overlay map, and hidden in the inline map
+  const overlaySearch = page.locator('[data-testid="map-sheet"] [data-testid="map-search-input"]');
+  await expect(overlaySearch).toBeVisible();
+  await expect(inlineSearch).toHaveCount(0); // inline search is hidden/detached
+  
+  // 4. Shrink/Close map
+  await page.getByTestId('map-close').click();
+  
+  // 5. Search bar is visible in inline map again
+  await expect(inlineSearch).toBeVisible();
 });
