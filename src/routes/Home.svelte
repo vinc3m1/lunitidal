@@ -179,6 +179,9 @@
               mode="inline"
               lat={$selection.point.lat}
               lon={$selection.point.lon}
+              stationLat={$selection.station.latitude}
+              stationLon={$selection.station.longitude}
+              stationName={$selection.station.name}
             />
           {/key}
         {:else}
@@ -212,6 +215,9 @@
     this={MapComp}
     lat={$selection.point.lat}
     lon={$selection.point.lon}
+    stationLat={$selection.station.latitude}
+    stationLon={$selection.station.longitude}
+    stationName={$selection.station.name}
     on:close={() => (showMap = false)}
   />
 {/if}

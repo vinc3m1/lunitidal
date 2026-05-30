@@ -7,14 +7,85 @@
 
   export let lat = -8.7;
   export let lon = 115.2;
+  export let stationLat: number | null = null;
+  export let stationLon: number | null = null;
+  export let stationName = 'Tide station';
   export let mode: 'overlay' | 'inline' = 'overlay';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   let container: HTMLDivElement;
   let map: maplibregl.Map | undefined;
+  let currentMarker: maplibregl.Marker | undefined;
+  let stationMarker: maplibregl.Marker | undefined;
   let pinMarker: maplibregl.Marker | undefined;
   let picked: { lat: number; lon: number } | null = null;
   let busy = false;
+
+  function makeCurrentMarker() {
+    const el = document.createElement('div');
+    el.className = 'current-location-marker';
+    el.dataset.testid = 'current-location-marker';
+    el.title = 'Current location';
+    el.setAttribute('aria-label', 'Current location');
+    return el;
+  }
+
+  function makeStationMarker() {
+    const el = document.createElement('div');
+    el.className = 'selected-station-marker';
+    el.dataset.testid = 'selected-station-marker';
+    el.title = stationName;
+    el.setAttribute('aria-label', stationName);
+    return el;
+  }
+
+  function makePendingMarker() {
+    const el = document.createElement('div');
+    el.className = 'pending-location-marker';
+    el.dataset.testid = 'pending-location-marker';
+    el.title = 'Marked location';
+    el.setAttribute('aria-label', 'Marked location');
+    return el;
+  }
+
+  function markLocation(point: { lat: number; lon: number }) {
+    picked = point;
+    if (pinMarker) pinMarker.setLngLat([point.lon, point.lat]);
+    else {
+      pinMarker = new maplibregl.Marker({ element: makePendingMarker(), anchor: 'bottom' })
+        .setLngLat([point.lon, point.lat])
+        .addTo(map!);
+    }
+  }
+
+  function fitSelection(
+    selectedLat: number,
+    selectedLon: number,
+    selectedStationLat: number | null,
+    selectedStationLon: number | null,
+    displayMode: 'overlay' | 'inline',
+  ) {
+    if (!map) return;
+    const selected: [number, number] = [selectedLon, selectedLat];
+    const station: [number, number] = [
+      selectedStationLon ?? selectedLon,
+      selectedStationLat ?? selectedLat,
+    ];
+    currentMarker?.setLngLat(selected);
+    stationMarker?.setLngLat(station);
+
+    if (selected[0] === station[0] && selected[1] === station[1]) {
+      map.easeTo({ center: selected, zoom: Math.max(map.getZoom(), 10), duration: 450 });
+      return;
+    }
+
+    const bounds = new maplibregl.LngLatBounds(selected, selected).extend(station);
+    map.fitBounds(bounds, {
+      padding: displayMode === 'inline' ? 60 : 100,
+      maxZoom: displayMode === 'inline' ? 12 : 13,
+      duration: 450,
+    });
+  }
 
   onMount(async () => {
     map = new maplibregl.Map({
@@ -24,10 +95,21 @@
       zoom: 9,
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-    map.addControl(
-      new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: false } }),
-      'top-right',
-    );
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: false },
+      showUserLocation: false,
+      trackUserLocation: false,
+    });
+    geolocate.on('geolocate', (e: GeolocationPosition) => {
+      markLocation({ lat: e.coords.latitude, lon: e.coords.longitude });
+    });
+    map.addControl(geolocate, 'top-right');
+    currentMarker = new maplibregl.Marker({ element: makeCurrentMarker(), anchor: 'center' })
+      .setLngLat([lon, lat])
+      .addTo(map);
+    stationMarker = new maplibregl.Marker({ element: makeStationMarker(), anchor: 'bottom' })
+      .setLngLat([stationLon ?? lon, stationLat ?? lat])
+      .addTo(map);
 
     const index = await loadIndex();
     const data = {
@@ -79,15 +161,11 @@
     map.on('click', (e) => {
       if (!map) return;
       if (map.queryRenderedFeatures(e.point, { layers: ['stations-c'] }).length) return;
-      picked = { lat: e.lngLat.lat, lon: e.lngLat.lng };
-      if (pinMarker) pinMarker.setLngLat([picked.lon, picked.lat]);
-      else pinMarker = new maplibregl.Marker({ color: '#ffb454' }).setLngLat([picked.lon, picked.lat]).addTo(map);
+      markLocation({ lat: e.lngLat.lat, lon: e.lngLat.lng });
     });
   });
 
-  $: if (map) {
-    map.easeTo({ center: [lon, lat], duration: 450 });
-  }
+  $: fitSelection(lat, lon, stationLat, stationLon, mode);
 
   onDestroy(() => map?.remove());
 
@@ -120,7 +198,7 @@
   <div class="map" bind:this={container}></div>
   {#if picked}
     <button class="use-pin" type="button" data-testid="use-pin" disabled={busy} on:click={useDroppedPin}>
-      {busy ? 'Loading…' : 'Use this point'}
+      {busy ? 'Loading…' : 'Use this location'}
     </button>
   {/if}
 </div>
@@ -168,6 +246,37 @@
   }
   .map-inline .map {
     min-height: 18rem;
+  }
+  :global(.current-location-marker) {
+    width: 1.45rem;
+    height: 1.45rem;
+    border: 3px solid #ffffff;
+    border-radius: 999px;
+    background: var(--falling);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--falling) 35%, transparent),
+      0 2px 10px rgba(0, 0, 0, 0.45);
+  }
+  :global(.selected-station-marker) {
+    width: 1.65rem;
+    height: 1.65rem;
+    border: 3px solid #ffffff;
+    border-radius: 0.35rem;
+    background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent),
+      0 2px 10px rgba(0, 0, 0, 0.45);
+  }
+  :global(.pending-location-marker) {
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 3px solid #ffffff;
+    border-radius: 999px;
+    background: var(--falling);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--falling) 30%, transparent),
+      0 2px 10px rgba(0, 0, 0, 0.45);
   }
   .use-pin {
     position: absolute;
