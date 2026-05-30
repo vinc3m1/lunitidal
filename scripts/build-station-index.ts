@@ -70,27 +70,31 @@ function pickBenoa(list: Station[]): Station | undefined {
 }
 
 async function main() {
-  console.log(`Extracting from @neaps/tide-database: ${stations.length} quality stations`);
+  // Only keep reference stations with harmonic constituents (predictor only supports these)
+  const qualityStations = stations.filter(
+    (s) => s.type === 'reference' && Array.isArray(s.harmonic_constituents) && s.harmonic_constituents.length > 0,
+  );
+  console.log(`Extracting from @neaps/tide-database: ${qualityStations.length} quality reference stations`);
 
   // Fresh per-station dir each run.
   await rm(STATIONS_DIR, { recursive: true, force: true });
   await mkdir(STATIONS_DIR, { recursive: true });
 
   // 1. Slim index for all quality stations.
-  const index = stations.map(toIndexEntry);
+  const index = qualityStations.map(toIndexEntry);
   await writeFile(new URL('stations-index.json', OUT), JSON.stringify(index));
   console.log(`  wrote stations-index.json (${index.length} entries)`);
 
   // 2. Per-station full records (lazy-loaded at runtime, cache-first).
   const BATCH = 200;
-  for (let i = 0; i < stations.length; i += BATCH) {
+  for (let i = 0; i < qualityStations.length; i += BATCH) {
     await Promise.all(
-      stations.slice(i, i + BATCH).map((s) =>
+      qualityStations.slice(i, i + BATCH).map((s) =>
         writeFile(new URL(`${stationFileSlug(s.id)}.json`, STATIONS_DIR), JSON.stringify(s)),
       ),
     );
   }
-  console.log(`  wrote ${stations.length} per-station files to stations/`);
+  console.log(`  wrote ${qualityStations.length} per-station files to stations/`);
 
   // 3. Benoa seed (bundled + precached for offline first-launch).
   const benoa = pickBenoa(stations);

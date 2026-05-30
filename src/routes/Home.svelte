@@ -42,10 +42,16 @@
   let modelStationId: string | null = null;
   $: station = $selection?.station ?? null;
   $: if (station && station.id !== modelStationId) {
-    model = createModel(station.harmonic_constituents);
-    modelStationId = station.id;
-    scrubMs = Date.now();
-    dayOffset = 0;
+    try {
+      model = createModel(station.harmonic_constituents);
+      modelStationId = station.id;
+      scrubMs = Date.now();
+      dayOffset = 0;
+    } catch (e) {
+      console.error('Failed to create tide model:', e);
+      model = null;
+      modelStationId = null;
+    }
   }
 
   $: tz = station?.timezone ?? 'UTC';

@@ -222,6 +222,15 @@
     font-size: 1.1rem;
     min-width: 44px;
     min-height: 44px;
+    cursor: pointer;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .x:hover {
+    background: color-mix(in srgb, var(--surface) 80%, var(--text) 20%);
+    color: var(--text);
   }
   .primary-actions {
     display: flex;
@@ -241,9 +250,18 @@
     color: var(--bg);
     border: none;
     font-weight: 700;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .geo:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+  .geo:active:not(:disabled) {
+    transform: scale(0.985);
   }
   .geo:disabled {
     opacity: 0.6;
+    cursor: not-allowed;
   }
   .map-btn {
     flex: none;
@@ -255,11 +273,25 @@
     color: var(--text);
     border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
     font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .map-btn:hover {
+    background: color-mix(in srgb, var(--surface) 80%, var(--text) 20%);
+  }
+  .map-btn:active {
+    transform: scale(0.985);
   }
   .search {
     background: var(--surface);
     color: var(--text);
     border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .search:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
   }
   .results {
     list-style: none;
@@ -281,6 +313,14 @@
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .results button:hover {
+    background: color-mix(in srgb, var(--surface) 85%, var(--text) 15%);
+  }
+  .results button:active {
+    transform: scale(0.99);
   }
   .name {
     font-weight: 600;
