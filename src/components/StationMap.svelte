@@ -93,8 +93,10 @@
       style: 'https://tiles.openfreemap.org/styles/positron',
       center: [lon, lat],
       zoom: 9,
+      attributionControl: false,
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: false },
       showUserLocation: false,
@@ -292,5 +294,14 @@
     font-size: 1rem;
     min-height: 48px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .use-pin:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+  .use-pin:active:not(:disabled) {
+    transform: translateX(-50%) scale(0.98);
   }
 </style>
