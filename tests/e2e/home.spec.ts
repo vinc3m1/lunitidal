@@ -18,6 +18,11 @@ test('shows an answer-first readout', async ({ page }) => {
   await expect(page.locator('.readout')).toContainText(/\d/);
 });
 
+test('shows an embedded map on the home page', async ({ page }) => {
+  await expect(page.getByTestId('home-map-card')).toBeVisible();
+  await expect(page.getByTestId('home-map').locator('.maplibregl-canvas')).toBeVisible();
+});
+
 test('scrubbing the chart updates the readout', async ({ page }) => {
   const readout = page.locator('.readout');
   const before = (await readout.innerText()).trim();
@@ -59,4 +64,16 @@ test('day navigation changes the displayed day', async ({ page }) => {
   const today = (await label.innerText()).trim();
   await page.locator('.daynav button[aria-label="Next day"]').click();
   await expect(label).not.toHaveText(today);
+});
+
+test('uses a two-column home layout on desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.reload();
+  await page.waitForSelector('svg[role="slider"]');
+
+  const main = await page.locator('.main-column').boundingBox();
+  const map = await page.getByTestId('home-map-card').boundingBox();
+  if (!main || !map) throw new Error('home layout boxes were not available');
+
+  expect(map.x).toBeGreaterThan(main.x + main.width - 1);
 });

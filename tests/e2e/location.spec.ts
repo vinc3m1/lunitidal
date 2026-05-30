@@ -38,7 +38,7 @@ test('map opens with a MapLibre canvas', async ({ page }) => {
   await page.getByTestId('change-location').click();
   await page.getByTestId('open-map').click();
   await expect(page.getByTestId('map-sheet')).toBeVisible();
-  await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+  await expect(page.getByTestId('map-sheet').locator('.maplibregl-canvas')).toBeVisible();
   await page.getByTestId('map-close').click();
   await expect(page.getByTestId('map-sheet')).toHaveCount(0);
 });

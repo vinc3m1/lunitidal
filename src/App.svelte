@@ -41,11 +41,17 @@
 
 <style>
   main {
-    max-width: 32rem;
+    max-width: 72rem;
     margin: 0 auto;
     padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  @media (min-width: 48rem) {
+    main {
+      padding: 1.25rem 1.5rem calc(1.25rem + env(safe-area-inset-bottom));
+    }
   }
 </style>

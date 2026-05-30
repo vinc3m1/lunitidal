@@ -7,6 +7,7 @@
 
   export let lat = -8.7;
   export let lon = 115.2;
+  export let mode: 'overlay' | 'inline' = 'overlay';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   let container: HTMLDivElement;
@@ -84,6 +85,10 @@
     });
   });
 
+  $: if (map) {
+    map.easeTo({ center: [lon, lat], duration: 450 });
+  }
+
   onDestroy(() => map?.remove());
 
   async function run(fn: () => Promise<void>) {
@@ -99,13 +104,19 @@
   const useDroppedPin = () => picked && run(() => selectPoint(picked!.lat, picked!.lon));
 </script>
 
-<div class="map-overlay" data-testid="map-sheet">
-  <header>
-    <button class="x" type="button" data-testid="map-close" on:click={() => dispatch('close')} aria-label="Close map"
-      >✕</button
-    >
-    <span class="hint">Tap a station, or drop a pin anywhere</span>
-  </header>
+<div
+  class:map-overlay={mode === 'overlay'}
+  class:map-inline={mode === 'inline'}
+  data-testid={mode === 'overlay' ? 'map-sheet' : 'home-map'}
+>
+  {#if mode === 'overlay'}
+    <header>
+      <button class="x" type="button" data-testid="map-close" on:click={() => dispatch('close')} aria-label="Close map"
+        >✕</button
+      >
+      <span class="hint">Tap a station, or drop a pin anywhere</span>
+    </header>
+  {/if}
   <div class="map" bind:this={container}></div>
   {#if picked}
     <button class="use-pin" type="button" data-testid="use-pin" disabled={busy} on:click={useDroppedPin}>
@@ -122,6 +133,14 @@
     display: flex;
     flex-direction: column;
     background: var(--bg);
+  }
+  .map-inline {
+    position: relative;
+    display: flex;
+    min-height: 18rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: var(--surface);
   }
   header {
     display: flex;
@@ -146,6 +165,9 @@
   .map {
     flex: 1;
     min-height: 0;
+  }
+  .map-inline .map {
+    min-height: 18rem;
   }
   .use-pin {
     position: absolute;
