@@ -4,7 +4,7 @@
   import { settings } from '../stores/settings';
   import { selection, selectionStatus } from '../stores/selection';
   import { favoriteId, favorites, isFavorite, toggleFavorite } from '../stores/favorites';
-  import { addDays, createModel, datumOffset, formatDay, startOfDayInTz } from '../engine';
+  import { addDays, createModel, datumOffset, formatDay, startOfDayInTz, tzAbbrev } from '../engine';
   import type { Extreme, TidePoint } from '../engine/types';
   import type { TideModel } from '../engine/predictor';
   import TideChart from '../components/TideChart.svelte';
@@ -48,6 +48,7 @@
   $: dayEnd = addDays(dayStart, 1);
   $: offset = station ? datumOffset(station, $settings.datum ?? undefined) : 0;
   $: datumName = $settings.datum ?? station?.chart_datum ?? 'MSL';
+  $: tzLabel = station ? tzAbbrev(dayStart, tz) : '';
 
   $: points = (model ? model.timeline(dayStart, dayEnd, 600) : []).map(
     (p): TidePoint => ({ time: p.time, level: p.level + offset }),
@@ -118,7 +119,9 @@
 
     <div class="daynav">
       <button type="button" on:click={() => gotoDay(-1)} aria-label="Previous day">‹</button>
-      <button type="button" class="day" on:click={today}>{formatDay(dayStart, tz)}</button>
+      <button type="button" class="day" on:click={today}>
+        {formatDay(dayStart, tz)}{tzLabel ? ` · ${tzLabel}` : ''}
+      </button>
       <button type="button" on:click={() => gotoDay(1)} aria-label="Next day">›</button>
     </div>
 
@@ -151,6 +154,7 @@
     </div>
     <ExtremesTable {extremes} {tz} heightUnit={$settings.heightUnit} timeFormat={$settings.timeFormat} />
     <p class="datum">Heights above {datumName} · {$selection.station.source?.name ?? 'tide model'}</p>
+    <p class="datum">Times shown in {tzLabel} — the station’s local time</p>
   </section>
 
   <footer>
