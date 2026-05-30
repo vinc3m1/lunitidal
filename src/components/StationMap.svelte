@@ -239,7 +239,6 @@
       attributionControl: false,
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: false },
       showUserLocation: false,
@@ -254,6 +253,7 @@
       markLocation({ lat: e.coords.latitude, lon: e.coords.longitude });
     });
     map.addControl(geolocate, 'bottom-right');
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     currentMarker = new maplibregl.Marker({ element: makeCurrentMarker(), anchor: 'center' })
       .setLngLat([lon, lat])
       .addTo(map);
@@ -273,6 +273,11 @@
 
     map.on('load', () => {
       if (!map) return;
+
+      // Force compact attribution to start collapsed (MapLibre auto-expands on desktop)
+      const attribEl = container.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact');
+      if (attribEl) attribEl.classList.remove('maplibregl-compact-show');
+
       map.addSource('stations', { type: 'geojson', data: data as never });
       map.addLayer({
         id: 'stations-c',
