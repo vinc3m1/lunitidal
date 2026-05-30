@@ -25,6 +25,47 @@ test('shows an embedded map on the home page', async ({ page }) => {
   await expect(page.getByTestId('home-map').getByTestId('selected-station-marker')).toBeVisible();
 });
 
+test('embedded map fits both selected point and snapped station', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'lunitidal:lastLocation',
+      JSON.stringify({
+        stationId: 'ticon/benoa-163-idn-uhslc_fd',
+        label: 'Northern Bali',
+        km: 160,
+        lat: -7.4,
+        lon: 114.7,
+      }),
+    );
+  });
+  await page.reload();
+  await page.waitForSelector('svg[role="slider"]');
+  await expect(page.getByTestId('home-map').locator('.maplibregl-canvas')).toBeVisible();
+
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const map = document.querySelector('[data-testid="home-map"]')?.getBoundingClientRect();
+          const current = document
+            .querySelector('[data-testid="home-map"] [data-testid="current-location-marker"]')
+            ?.getBoundingClientRect();
+          const station = document
+            .querySelector('[data-testid="home-map"] [data-testid="selected-station-marker"]')
+            ?.getBoundingClientRect();
+          if (!map || !current || !station) return false;
+          const inside = (rect: DOMRect) => {
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            return x >= map.left && x <= map.right && y >= map.top && y <= map.bottom;
+          };
+          return inside(current) && inside(station);
+        }),
+      { timeout: 5_000 },
+    )
+    .toBe(true);
+});
+
 test('map geolocate marks current location for one-click selection', async ({ page }) => {
   const map = page.getByTestId('home-map');
   await expect(map.locator('.maplibregl-canvas')).toBeVisible();

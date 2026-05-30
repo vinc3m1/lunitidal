@@ -59,13 +59,13 @@
   }
 
   function fitSelection(
+    targetMap: maplibregl.Map,
     selectedLat: number,
     selectedLon: number,
     selectedStationLat: number | null,
     selectedStationLon: number | null,
     displayMode: 'overlay' | 'inline',
   ) {
-    if (!map) return;
     const selected: [number, number] = [selectedLon, selectedLat];
     const station: [number, number] = [
       selectedStationLon ?? selectedLon,
@@ -75,12 +75,12 @@
     stationMarker?.setLngLat(station);
 
     if (selected[0] === station[0] && selected[1] === station[1]) {
-      map.easeTo({ center: selected, zoom: Math.max(map.getZoom(), 10), duration: 450 });
+      targetMap.easeTo({ center: selected, zoom: Math.max(targetMap.getZoom(), 10), duration: 450 });
       return;
     }
 
     const bounds = new maplibregl.LngLatBounds(selected, selected).extend(station);
-    map.fitBounds(bounds, {
+    targetMap.fitBounds(bounds, {
       padding: displayMode === 'inline' ? 60 : 100,
       maxZoom: displayMode === 'inline' ? 12 : 13,
       duration: 450,
@@ -165,7 +165,7 @@
     });
   });
 
-  $: fitSelection(lat, lon, stationLat, stationLon, mode);
+  $: if (map) fitSelection(map, lat, lon, stationLat, stationLon, mode);
 
   onDestroy(() => map?.remove());
 
