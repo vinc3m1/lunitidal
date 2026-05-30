@@ -53,3 +53,23 @@ test('map opens with a MapLibre canvas', async ({ page }) => {
   await page.getByTestId('map-close').click();
   await expect(page.getByTestId('map-sheet')).toHaveCount(0);
 });
+
+test('dropping a pin on the map displays the "Use this location" button', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('open-map').click();
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+
+  // Click on the map canvas to drop a pin
+  const canvas = page.getByTestId('map-sheet').locator('.maplibregl-canvas');
+  await canvas.click({ position: { x: 100, y: 100 } });
+
+  // Verify that the "Use this location" button appears and is visible
+  const usePinBtn = page.getByTestId('use-pin');
+  await expect(usePinBtn).toBeVisible();
+  await expect(usePinBtn).toHaveText('Use this location');
+
+  // Verify that MapLibre's attribution is in compact form
+  const attrib = page.getByTestId('map-sheet').locator('.maplibregl-ctrl-attrib');
+  await expect(attrib).toHaveClass(/maplibregl-compact/);
+});

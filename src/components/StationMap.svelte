@@ -162,7 +162,9 @@
     });
     map.on('click', (e) => {
       if (!map) return;
-      if (map.queryRenderedFeatures(e.point, { layers: ['stations-c'] }).length) return;
+      if (map.getLayer('stations-c')) {
+        if (map.queryRenderedFeatures(e.point, { layers: ['stations-c'] }).length) return;
+      }
       markLocation({ lat: e.lngLat.lat, lon: e.lngLat.lng });
     });
   });
