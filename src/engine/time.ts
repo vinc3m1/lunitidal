@@ -68,7 +68,9 @@ export function startOfDayInTz(instant: Date, timeZone: string): Date {
     local.getUTCMonth(),
     local.getUTCDate(),
   );
-  return new Date(midnightWall - offset);
+  const result = new Date(midnightWall - offset);
+  result.setUTCSeconds(0, 0);
+  return result;
 }
 
 export function addDays(instant: Date, days: number): Date {
