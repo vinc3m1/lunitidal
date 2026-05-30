@@ -59,6 +59,26 @@ export const test = base.extend<{ consoleErrors: string[] }>({
         });
       });
 
+      // Mock the geocoding API to make place searches work offline, fast, and reliably in tests.
+      await page.route(/geocoding-api\.open-meteo\.com/, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            results: [
+              {
+                id: 12345,
+                name: 'Tanjung Benoa',
+                admin1: 'Bali',
+                country: 'Indonesia',
+                latitude: -8.77,
+                longitude: 115.22,
+              },
+            ],
+          }),
+        });
+      });
+
       // Default: block IP geolocation so the first-load default is deterministically the
       // bundled seed (Benoa). Tests that want the IP path register their own route first.
       await page.route(/get\.geojs\.io/, (route) => route.abort());

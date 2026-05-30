@@ -22,6 +22,17 @@ test('offline station-name search selects a station', async ({ page }) => {
   await expect(page.locator('header.locbar .name')).toHaveText('Benoa');
 });
 
+test('online place search selects a place and updates the location', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('search-input').fill('Tanjung Benoa');
+  await page.getByTestId('place-result').first().click();
+  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  const bar = page.locator('header.locbar');
+  await expect(bar.locator('.name')).toHaveText('Tanjung Benoa, Bali, Indonesia');
+  await expect(bar).toContainText('Benoa'); // Snaps to Benoa tide station
+});
+
 test('favorite persists across reload (regression: persisted arrays)', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('svg[role="slider"]');

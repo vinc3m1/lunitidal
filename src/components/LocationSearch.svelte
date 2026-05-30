@@ -12,11 +12,12 @@
 
   let query = '';
   let index: IndexEntry[] = [];
-  let stationResults: IndexEntry[] = [];
   let placeResults: GeoResult[] = [];
   let geoError = '';
   let busy = '';
   let timer: ReturnType<typeof setTimeout> | undefined;
+
+  $: stationResults = query.trim() ? searchByName(index, query.trim(), 12) : [];
 
   onMount(async () => {
     try {
@@ -33,7 +34,6 @@
 
   async function runSearch() {
     const q = query.trim();
-    stationResults = q ? searchByName(index, q, 12) : [];
     placeResults = [];
     geoError = '';
     if (q.length >= 3 && navigator.onLine) {
