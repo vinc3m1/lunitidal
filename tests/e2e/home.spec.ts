@@ -128,3 +128,31 @@ test('uses a two-column home layout on desktop', async ({ page }) => {
 
   expect(map.x).toBeGreaterThan(main.x + main.width - 1);
 });
+
+test('today button highlights when scrubbing away from now and resets on click', async ({ page }) => {
+  const todayBtn = page.locator('.daynav .day');
+  
+  // Verify correct aria-label and title attributes are present
+  await expect(todayBtn).toHaveAttribute('aria-label', 'Today');
+  await expect(todayBtn).toHaveAttribute('title', 'Today');
+  await expect(page.locator('.daynav button[aria-label="Previous day"]')).toBeVisible();
+  await expect(page.locator('.daynav button[aria-label="Next day"]')).toBeVisible();
+
+  // Initially at "now", so no highlight class
+  await expect(todayBtn).not.toHaveClass(/highlight/);
+
+  // Scrub the chart to navigate away from "now"
+  const box = await page.locator('svg[role="slider"]').first().boundingBox();
+  if (!box) throw new Error('no chart box');
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.up();
+
+  // Button should fade/transition to highlighted state
+  await expect(todayBtn).toHaveClass(/highlight/);
+
+  // Clicking it resets back to "now" and removes highlight
+  await todayBtn.click();
+  await expect(todayBtn).not.toHaveClass(/highlight/);
+});
+

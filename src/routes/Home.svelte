@@ -74,6 +74,7 @@
 
   $: scrubDate = new Date(Math.min(dayEnd.getTime(), Math.max(dayStart.getTime(), scrubMs)));
   $: scrubLevel = levelAtDisplay(scrubDate);
+  $: isNow = Math.abs(scrubMs - now.getTime()) < 60_000;
 
   $: favKey = $selection ? favoriteId($selection.point.lat, $selection.point.lon) : '';
   $: isFav = $favorites && favKey ? isFavorite(favKey) : false;
@@ -134,11 +135,28 @@
         />
 
         <div class="daynav">
-          <button type="button" on:click={() => gotoDay(-1)} aria-label="Previous day">‹</button>
-          <button type="button" class="day" on:click={today}>
+          <button
+            type="button"
+            on:click={() => gotoDay(-1)}
+            aria-label="Previous day"
+            title="Previous day"
+          >‹</button>
+          <button
+            type="button"
+            class="day"
+            class:highlight={!isNow}
+            on:click={today}
+            aria-label="Today"
+            title="Today"
+          >
             {formatDay(dayStart, tz)}{tzLabel ? ` · ${tzLabel}` : ''}
           </button>
-          <button type="button" on:click={() => gotoDay(1)} aria-label="Next day">›</button>
+          <button
+            type="button"
+            on:click={() => gotoDay(1)}
+            aria-label="Next day"
+            title="Next day"
+          >›</button>
         </div>
 
         <TideChart
@@ -329,12 +347,26 @@
     background: var(--surface);
     color: var(--text);
     font-size: 1.2rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+  }
+  .daynav button:hover {
+    background: color-mix(in srgb, var(--surface) 85%, var(--text) 15%);
+  }
+  .daynav button:active {
+    transform: scale(0.97);
   }
   .daynav .day {
     flex: 1;
     max-width: 14rem;
     font-size: 0.95rem;
     font-weight: 600;
+  }
+  .daynav .day.highlight {
+    background: color-mix(in srgb, var(--surface) 80%, var(--accent) 20%);
+  }
+  .daynav .day.highlight:hover {
+    background: color-mix(in srgb, var(--surface) 70%, var(--accent) 30%);
   }
   .status {
     color: var(--muted);
