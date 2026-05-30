@@ -43,4 +43,24 @@ describe('stations', () => {
     expect(searchByName(index, 'australia').map((s) => s.id)).toEqual(['sydney']);
     expect(searchByName(index, '')).toEqual([]);
   });
+
+  it('search is case-insensitive and trims whitespace', () => {
+    expect(searchByName(index, '  BeNoA ').map((s) => s.id)).toEqual(['benoa']);
+  });
+
+  it('search respects the result limit', () => {
+    expect(searchByName(index, 'a', 1)).toHaveLength(1); // matches Australia + Indonesia
+  });
+
+  it('nearest caps n at the index length and returns zero distance for an exact hit', () => {
+    expect(nearest(index, 0, 0, 99)).toHaveLength(index.length);
+    const [hit] = nearest(index, -8.745, 115.21, 1);
+    expect(hit.station.id).toBe('benoa');
+    expect(hit.km).toBeCloseTo(0, 3);
+  });
+
+  it('haversine is symmetric and zero for identical points', () => {
+    expect(haversineKm(10, 20, 10, 20)).toBe(0);
+    expect(haversineKm(-8.7, 115.2, 51.5, -0.1)).toBeCloseTo(haversineKm(51.5, -0.1, -8.7, 115.2), 6);
+  });
 });

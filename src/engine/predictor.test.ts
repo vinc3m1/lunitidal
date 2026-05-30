@@ -56,4 +56,14 @@ describe('Benoa predictor', () => {
       expect(toDatum(e.level, benoa)).toBeGreaterThan(-0.5);
     }
   });
+
+  it('produces a continuous timeline spanning the window with finite levels', () => {
+    const pts = model.timeline(dayStart, dayEnd, 600);
+    expect(pts.length).toBeGreaterThan(100);
+    expect(pts[0].time.getTime()).toBe(dayStart.getTime());
+    for (const p of pts) {
+      expect(Number.isFinite(p.level)).toBe(true);
+      expect(Math.abs(p.level)).toBeLessThan(5);
+    }
+  });
 });

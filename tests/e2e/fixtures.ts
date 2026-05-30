@@ -4,7 +4,7 @@ import { test as base, expect } from '@playwright/test';
 // break these). Genuine app JS errors and uncaught exceptions are NEVER ignored —
 // that's what catches regressions like the favorites ".some is not a function" crash.
 const IGNORE =
-  /Failed to load resource|net::ERR|ERR_INTERNET|marine-api\.open-meteo|geocoding-api\.open-meteo|openfreemap|the server responded with a status/i;
+  /Failed to load resource|net::ERR|ERR_INTERNET|marine-api\.open-meteo|geocoding-api\.open-meteo|openfreemap|the server responded with a status|WebGL|SwiftShader|software rendering|GroupMarkerNotSet/i;
 
 /**
  * Every test using `page` automatically fails if the page logs an uncaught

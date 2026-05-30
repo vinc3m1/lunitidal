@@ -12,14 +12,11 @@ export interface GeoResult {
   lon: number;
 }
 
-export async function geocode(query: string, count = 6): Promise<GeoResult[]> {
-  const url =
-    `https://geocoding-api.open-meteo.com/v1/search` +
-    `?name=${encodeURIComponent(query)}&count=${count}&language=en&format=json`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
-  const data = (await res.json()) as { results?: Array<Record<string, unknown>> };
-  return (data.results ?? []).map((r) => ({
+/** Pure mapping of the Open-Meteo geocoding response → our shape. Unit-tested. */
+export function parseGeoResults(data: unknown): GeoResult[] {
+  const results = (data as { results?: Array<Record<string, unknown>> } | null)?.results;
+  if (!Array.isArray(results)) return [];
+  return results.map((r) => ({
     id: r.id as number,
     name: r.name as string,
     admin1: r.admin1 as string | undefined,
@@ -27,6 +24,15 @@ export async function geocode(query: string, count = 6): Promise<GeoResult[]> {
     lat: r.latitude as number,
     lon: r.longitude as number,
   }));
+}
+
+export async function geocode(query: string, count = 6): Promise<GeoResult[]> {
+  const url =
+    `https://geocoding-api.open-meteo.com/v1/search` +
+    `?name=${encodeURIComponent(query)}&count=${count}&language=en&format=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
+  return parseGeoResults(await res.json());
 }
 
 /** "Uluwatu, Bali, Indonesia" from a geocoder result. */

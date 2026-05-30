@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test:e2e": "playwright test",
+    "test:all": "vitest run && playwright test"
   },
   "devDependencies": {
     "@neaps/tide-database": "^0.7.20260501",

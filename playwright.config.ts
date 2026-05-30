@@ -19,7 +19,16 @@ export default defineConfig({
     permissions: ['geolocation'],
     geolocation: { latitude: -8.7, longitude: 115.22 },
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        browserName: 'chromium',
+        // Headless CI has no GPU; allow software WebGL so MapLibre initialises.
+        launchOptions: { args: ['--enable-unsafe-swiftshader'] },
+      },
+    },
+  ],
   webServer: {
     command: 'bun run build && bunx vite preview --port 4173 --strictPort',
     url: 'http://localhost:4173',

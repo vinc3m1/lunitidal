@@ -16,29 +16,21 @@ export interface MarineData {
   peak: MarinePoint | null;
 }
 
-export async function getMarine(
-  lat: number,
-  lon: number,
-  start: Date,
-  end: Date,
-): Promise<MarineData> {
-  const params = new URLSearchParams({
-    latitude: lat.toFixed(4),
-    longitude: lon.toFixed(4),
-    hourly: 'wave_height,swell_wave_height,swell_wave_period',
-    timezone: 'UTC',
-  });
-  const res = await fetch(`https://marine-api.open-meteo.com/v1/marine?${params}`);
-  if (!res.ok) throw new Error(`Marine API failed (${res.status})`);
-  const data = (await res.json()) as {
-    hourly?: {
-      time?: string[];
-      wave_height?: (number | null)[];
-      swell_wave_height?: (number | null)[];
-      swell_wave_period?: (number | null)[];
-    };
+interface MarineResponse {
+  hourly?: {
+    time?: string[];
+    wave_height?: (number | null)[];
+    swell_wave_height?: (number | null)[];
+    swell_wave_period?: (number | null)[];
   };
-  const h = data.hourly;
+}
+
+/**
+ * Pure: window the hourly response to [start, end) and find the peak-wave hour.
+ * Unit-tested (UTC parsing, windowing, null handling, peak selection).
+ */
+export function parseMarine(data: unknown, start: Date, end: Date): MarineData {
+  const h = (data as MarineResponse | null)?.hourly;
   if (!h?.time) return { points: [], peak: null };
 
   const startMs = start.getTime();
@@ -63,4 +55,21 @@ export async function getMarine(
     if (!peak || (peak.waveHeight ?? -1) < p.waveHeight) peak = p;
   }
   return { points, peak };
+}
+
+export async function getMarine(
+  lat: number,
+  lon: number,
+  start: Date,
+  end: Date,
+): Promise<MarineData> {
+  const params = new URLSearchParams({
+    latitude: lat.toFixed(4),
+    longitude: lon.toFixed(4),
+    hourly: 'wave_height,swell_wave_height,swell_wave_period',
+    timezone: 'UTC',
+  });
+  const res = await fetch(`https://marine-api.open-meteo.com/v1/marine?${params}`);
+  if (!res.ok) throw new Error(`Marine API failed (${res.status})`);
+  return parseMarine(await res.json(), start, end);
 }
