@@ -11,8 +11,11 @@
   export let km: number | null = null;
   export let distanceUnit: DistanceUnit;
   export let isFav = false;
+  /** Underlying tide station; shown in the meta when the label isn't the station itself. */
+  export let stationName = '';
 
   $: conf = km !== null ? confidenceForKm(km) : null;
+  $: showStation = km !== null && !!stationName && stationName !== name;
 </script>
 
 <header class="locbar">
@@ -20,7 +23,7 @@
     <div class="name">{name}</div>
     {#if km !== null && conf}
       <div class="meta">
-        {formatDistance(km, distanceUnit)} away ·
+        {#if showStation}{stationName} · {/if}{formatDistance(km, distanceUnit)} away ·
         <span class={`conf ${conf.level}`}>{conf.label}</span>
       </div>
     {/if}

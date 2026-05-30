@@ -1,6 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { loadIndex, loadSeedStation, loadStation, nearest } from '../engine/stations';
 import type { Station } from '../engine/types';
+import { getIpLocation } from '../sources/ipgeo';
 import { persisted } from './persisted';
 
 export interface Selection {
@@ -51,6 +52,19 @@ export async function initSelection(): Promise<void> {
         /* station not cached offline — fall back to seed */
       }
     }
+    // No saved location: try a silent IP-based guess (online only), then snap to the
+    // nearest station. Falls through to the bundled seed if it fails/times out/offline.
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      try {
+        const loc = await getIpLocation();
+        await selectPoint(loc.lat, loc.lon, loc.label);
+        selectionStatus.set('ready');
+        return;
+      } catch {
+        /* IP geolocation unavailable — fall back to seed */
+      }
+    }
+
     const station = await loadSeedStation();
     selection.set({
       station,
@@ -64,13 +78,18 @@ export async function initSelection(): Promise<void> {
   }
 }
 
-/** Pick an arbitrary point (geolocation / geocoder) and snap to the nearest station. */
-export async function selectPoint(lat: number, lon: number, label: string): Promise<void> {
+/**
+ * Pick an arbitrary point (geolocation / geocoder / IP) and snap to the nearest station.
+ * `label` is the meaningful place name when there is one (a searched place, an IP city);
+ * omit it for raw geolocation so the station's own name is shown instead of a stale
+ * "my location".
+ */
+export async function selectPoint(lat: number, lon: number, label?: string): Promise<void> {
   const index = await loadIndex();
   const [near] = nearest(index, lat, lon, 1);
   if (!near) throw new Error('No tide station found nearby');
   const station = await loadStation(near.station.id);
-  commit({ station, label, km: near.km, point: { lat, lon } });
+  commit({ station, label: label || station.name, km: near.km, point: { lat, lon } });
 }
 
 /** Pick a station directly (offline station search / favorite). */

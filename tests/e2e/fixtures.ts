@@ -20,6 +20,9 @@ export const test = base.extend<{ consoleErrors: string[] }>({
         const text = m.text();
         if (!IGNORE.test(text)) errors.push(`console: ${text}`);
       });
+      // Default: block IP geolocation so the first-load default is deterministically the
+      // bundled seed (Benoa). Tests that want the IP path register their own route first.
+      await page.route(/get\.geojs\.io/, (route) => route.abort());
       await use(errors);
       expect(errors, 'no unexpected console/page errors').toEqual([]);
     },

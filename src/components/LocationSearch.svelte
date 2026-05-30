@@ -65,9 +65,8 @@
     busy = 'geo';
     navigator.geolocation.getCurrentPosition(
       (pos) =>
-        withBusy('geo', () =>
-          selectPoint(pos.coords.latitude, pos.coords.longitude, 'My location'),
-        ),
+        // No label → the nearest station's name is used (not a stale "my location").
+        withBusy('geo', () => selectPoint(pos.coords.latitude, pos.coords.longitude)),
       (err) => {
         geoError = err.message;
         busy = '';

@@ -44,4 +44,7 @@ apparent from there or the code.
 - The `fixtures.ts` auto console-error guard is load-bearing: it turns "app threw on
   reload" into a failing test. Don't weaken it; if an external resource error is noisy,
   add it to the ignore regex there rather than removing the check.
+- First load calls geojs.io for an approximate IP default location. The e2e fixture
+  (`tests/e2e/fixtures.ts`) aborts that route so the default is deterministically the Benoa
+  seed; a test wanting the IP path registers its own `page.route(/get\.geojs\.io/, …)` first.
 - Verify changes with `bun run test:all` before committing.

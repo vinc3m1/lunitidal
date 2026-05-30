@@ -96,6 +96,7 @@
 {:else}
   <LocationBar
     name={$selection.label}
+      stationName={$selection.station.name}
     km={$selection.km}
     distanceUnit={$settings.distanceUnit}
     {isFav}

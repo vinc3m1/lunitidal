@@ -8,6 +8,9 @@ test('“use my location” snaps to the nearest station with confidence', async
   const bar = page.locator('header.locbar');
   await expect(bar).toContainText('away');
   await expect(bar).toContainText(/good match|approximate|rough estimate|nearest available/);
+  // Label is the nearest station, never a stale "my location".
+  await expect(bar).not.toContainText(/my location/i);
+  await expect(page.locator('header.locbar .name')).not.toHaveText('');
 });
 
 test('offline station-name search selects a station', async ({ page }) => {
