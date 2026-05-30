@@ -70,7 +70,14 @@
     time: p.time,
     level: p.waveHeight ?? 0,
   })) : [];
-  $: levels = chartPoints.map((p) => p.level);
+  $: swellPoints = data ? data.points.map((p) => ({
+    time: p.time,
+    level: p.swellHeight ?? 0,
+  })) : [];
+  $: levels = [
+    ...chartPoints.map((p) => p.level),
+    ...swellPoints.map((p) => p.level),
+  ];
   $: rawMin = 0;
   $: rawMax = levels.length ? Math.max(...levels, 0.1) : 1;
   $: vpad = (rawMax - rawMin) * 0.15 || 0.5;
@@ -90,6 +97,7 @@
   });
 
   $: linePath = buildLinePath(chartPoints, scale);
+  $: swellLinePath = buildLinePath(swellPoints, scale);
 
   $: scrubX = closestPoint ? scale.xOf(closestPoint.time.getTime()) : scale.xOf(scrubMs);
   $: scrubY = closestPoint && closestPoint.waveHeight != null ? scale.yOf(closestPoint.waveHeight) : scale.yOf(0);
@@ -167,12 +175,12 @@
     <div class="stats">
       <div class="stat">
         <span class="val">{activePoint.waveHeight != null ? formatHeight(activePoint.waveHeight, heightUnit) : '—'}</span>
-        <span class="lbl">waves</span>
+        <span class="lbl waves-lbl">waves</span>
       </div>
       {#if activePoint.swellHeight != null}
         <div class="stat">
           <span class="val">{formatHeight(activePoint.swellHeight, heightUnit)}</span>
-          <span class="lbl">swell</span>
+          <span class="lbl swell-lbl">swell</span>
         </div>
       {/if}
       {#if activePoint.swellPeriod != null}
@@ -202,6 +210,7 @@
         on:keydown={onKeydown}
       >
         <line class="baseline" x1={scale.padding.left} x2={width - scale.padding.right} y1={scale.baselineY} y2={scale.baselineY} />
+        <path d={swellLinePath} fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 3" stroke-opacity="0.55" stroke-linejoin="round" />
         <path d={linePath} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" />
         
         <line class="scrubLine" x1={scrubX} x2={scrubX} y1={scale.padding.top} y2={scale.baselineY} />
@@ -265,6 +274,24 @@
   .lbl {
     color: var(--muted);
     font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .lbl.waves-lbl::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 2.5px;
+    background: var(--accent);
+    border-radius: 99px;
+  }
+  .lbl.swell-lbl::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 0px;
+    border-top: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
   }
   .chart {
     width: 100%;
