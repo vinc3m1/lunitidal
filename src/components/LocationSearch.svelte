@@ -127,7 +127,7 @@
 
     {#if !query && $favorites.length}
       <h3>Favorites</h3>
-      <ul class="results">
+      <ul class="results" data-testid="favorites">
         {#each $favorites as f}
           <li>
             <button type="button" on:click={() => pickFavorite(f.lat, f.lon, f.label)}>

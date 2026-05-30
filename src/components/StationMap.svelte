@@ -95,7 +95,8 @@
       busy = false;
     }
   }
-  const useDroppedPin = () => picked && run(() => selectPoint(picked!.lat, picked!.lon, 'Dropped pin'));
+  // No label → the nearest station's name is used (not a stale "Dropped pin").
+  const useDroppedPin = () => picked && run(() => selectPoint(picked!.lat, picked!.lon));
 </script>
 
 <div class="map-overlay" data-testid="map-sheet">

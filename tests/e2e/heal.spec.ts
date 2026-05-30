@@ -24,9 +24,11 @@ test('migrates legacy "My location" labels from old storage', async ({ page }) =
   // The restored current location is healed (station name, not "my location").
   await expect(page.locator('header.locbar')).not.toContainText(/my location/i);
 
-  // The saved favorite is migrated too.
+  // The saved favorite is migrated too (scope to the favorites list — the sheet itself
+  // contains the "Use my location" button which legitimately says "my location").
   await page.getByTestId('change-location').click();
-  const sheet = page.getByTestId('location-sheet');
-  await expect(sheet).not.toContainText(/my location/i);
-  await expect(sheet).toContainText('Benoa');
+  const favs = page.getByTestId('favorites');
+  await expect(favs).toBeVisible();
+  await expect(favs).toContainText('★'); // a favorite entry exists
+  await expect(favs).not.toContainText(/my location/i); // and it's been relabelled
 });
