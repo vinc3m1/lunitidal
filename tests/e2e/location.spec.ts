@@ -213,3 +213,65 @@ test('search bar moves to overlay when expanded and back to inline when shrunk',
   // 5. Search bar is visible in inline map again
   await expect(inlineSearch).toBeVisible();
 });
+
+test('selected station marker is shifted vertically clear of the search bar', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('svg[role="slider"]');
+  
+  // Wait for the initial map load and easeTo animation (450ms duration) to complete
+  await page.waitForTimeout(650);
+  
+  // Verify that the inline map marker sits in the lower part of the viewport (y coordinate is greater than half the map height)
+  const mapEl = page.locator('[data-testid="home-map"] .map');
+  const markerEl = page.locator('[data-testid="home-map"] [data-testid="selected-station-marker"]');
+  
+  await expect(mapEl).toBeVisible();
+  await expect(markerEl).toBeVisible();
+  
+  const isOffset = await page.evaluate(() => {
+    const map = document.querySelector('[data-testid="home-map"] .map');
+    const marker = document.querySelector('[data-testid="home-map"] [data-testid="selected-station-marker"]');
+    if (!map || !marker) return false;
+    
+    const mapRect = map.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    
+    const mapCenterY = mapRect.top + mapRect.height / 2;
+    const markerCenterY = markerRect.top + markerRect.height / 2;
+    
+    // The marker should be pushed downwards, so its Y coordinate should be greater than the map center Y
+    // (since positive Y goes down in client coordinates)
+    return markerCenterY > mapCenterY + 10;
+  });
+  
+  expect(isOffset).toBe(true);
+});
+
+test('navigation zoom controls are positioned in the bottom-right stacking area', async ({ page }) => {
+  await page.goto('/');
+  
+  // Verify navigation controls are visible inside the map
+  const mapEl = page.locator('[data-testid="home-map"] .map');
+  await expect(mapEl).toBeVisible();
+  
+  const isBottomRight = await page.evaluate(() => {
+    const map = document.querySelector('[data-testid="home-map"] .map');
+    const ctrls = document.querySelectorAll('[data-testid="home-map"] .maplibregl-ctrl-group');
+    if (!map || ctrls.length === 0) return false;
+    
+    const mapRect = map.getBoundingClientRect();
+    const mapCenterX = mapRect.left + mapRect.width / 2;
+    const mapCenterY = mapRect.top + mapRect.height / 2;
+    
+    // Verify that every control group on the map is placed in the bottom-right quadrant
+    for (const ctrl of Array.from(ctrls)) {
+      const ctrlRect = ctrl.getBoundingClientRect();
+      if (ctrlRect.left < mapCenterX || ctrlRect.top < mapCenterY) {
+        return false;
+      }
+    }
+    return true;
+  });
+  
+  expect(isBottomRight).toBe(true);
+});
