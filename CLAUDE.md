@@ -36,6 +36,7 @@ apparent from there or the code.
   datum, timezone, units, and station lookup there. Svelte is only chrome + state.
 - Routing is **hash-based** (`svelte-spa-router`) so it works under the GitHub Pages
   subpath without server config.
+- **Subordinate stations:** These do not have harmonic constituents and are filtered out at build time (by `scripts/build-station-index.ts`) because the `@neaps/tide-predictor` requires constituents to perform predictions on-device. When a user searches for a subordinate beach, the app automatically snaps to the nearest reference station. (TODO: Add native support for subordinate time/height offsets by warping reference curves).
 
 ## Testing notes
 
