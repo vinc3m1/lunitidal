@@ -59,12 +59,36 @@ export function searchByName(index: IndexEntry[], query: string, limit = 25): In
       const region = s.region?.toLowerCase() ?? '';
       const country = s.country.toLowerCase();
 
-      return tokens.every(
-        (token) =>
+      return tokens.every((token) => {
+        // 1. Direct substring match
+        if (
           name.includes(token) ||
           region.includes(token) ||
-          country.includes(token),
-      );
+          country.includes(token)
+        ) {
+          return true;
+        }
+
+        // 2. Region initials match (e.g. "ny" matches "New York")
+        if (region) {
+          const regionInitials = region
+            .split(/\s+/)
+            .map((word) => word[0])
+            .join('');
+          if (regionInitials === token) return true;
+        }
+
+        // 3. Country initials match (e.g. "us" matches "United States")
+        if (country) {
+          const countryInitials = country
+            .split(/\s+/)
+            .map((word) => word[0])
+            .join('');
+          if (countryInitials === token) return true;
+        }
+
+        return false;
+      });
     })
     .slice(0, limit);
 }

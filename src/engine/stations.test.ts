@@ -22,6 +22,7 @@ const index: IndexEntry[] = [
   entry({ id: 'benoa', name: 'Benoa', region: 'Bali', country: 'Indonesia', lat: -8.745, lon: 115.21 }),
   entry({ id: 'sanur', name: 'Sanur', region: 'Bali', country: 'Indonesia', lat: -8.68, lon: 115.26 }),
   entry({ id: 'sydney', name: 'Sydney', region: 'NSW', country: 'Australia', lat: -33.86, lon: 151.21 }),
+  entry({ id: 'montauk', name: 'Montauk', region: 'New York', country: 'United States', lat: 41.04, lon: -71.95 }),
 ];
 
 describe('stations', () => {
@@ -49,6 +50,13 @@ describe('stations', () => {
     expect(searchByName(index, 'nsw sydney').map((s) => s.id)).toEqual(['sydney']);
     expect(searchByName(index, 'indonesia benoa').map((s) => s.id)).toEqual(['benoa']);
     expect(searchByName(index, 'bali sanur').map((s) => s.id)).toEqual(['sanur']);
+  });
+
+  it('supports region and country initials matching', () => {
+    expect(searchByName(index, 'montauk ny').map((s) => s.id)).toEqual(['montauk']);
+    expect(searchByName(index, 'ny montauk').map((s) => s.id)).toEqual(['montauk']);
+    expect(searchByName(index, 'montauk us').map((s) => s.id)).toEqual(['montauk']);
+    expect(searchByName(index, 'us montauk').map((s) => s.id)).toEqual(['montauk']);
   });
 
   it('search is case-insensitive and trims whitespace', () => {

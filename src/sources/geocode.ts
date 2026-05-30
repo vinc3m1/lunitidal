@@ -53,13 +53,37 @@ export async function geocode(query: string, count = 6): Promise<GeoResult[]> {
     cleaned = cleaned.replace(/\s+([a-zA-Z]{2})$/, '').trim();
   }
 
-  const url =
-    `https://geocoding-api.open-meteo.com/v1/search` +
-    `?name=${encodeURIComponent(cleaned)}&count=${count}&language=en&format=json`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
-  
-  const results = parseGeoResults(await res.json());
+  const fetchResults = async (q: string): Promise<GeoResult[]> => {
+    const url =
+      `https://geocoding-api.open-meteo.com/v1/search` +
+      `?name=${encodeURIComponent(q)}&count=${count}&language=en&format=json`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
+    return parseGeoResults(await res.json());
+  };
+
+  let results = await fetchResults(cleaned);
+
+  // Fallback: If no results were found, we didn't already extract a 2-letter suffix,
+  // and the query contains spaces, try treating the last word as a longer suffix (e.g. "cali" or "california").
+  if (results.length === 0 && !suffix && cleaned.includes(' ')) {
+    const lastSpaceIndex = cleaned.lastIndexOf(' ');
+    const possiblePrefix = cleaned.substring(0, lastSpaceIndex).trim();
+    const possibleSuffix = cleaned.substring(lastSpaceIndex + 1).trim();
+
+    // Suffix must be at least 2 letters and only alphabetic characters
+    if (possiblePrefix && /^[a-zA-Z]{2,}$/.test(possibleSuffix)) {
+      try {
+        const fallbackResults = await fetchResults(possiblePrefix);
+        if (fallbackResults.length > 0) {
+          suffix = possibleSuffix.toLowerCase();
+          results = fallbackResults;
+        }
+      } catch {
+        // Ignore fallback errors and return the original empty results
+      }
+    }
+  }
 
   // Prioritize matches that align with the suffix in the state or country fields
   if (suffix) {
@@ -74,6 +98,7 @@ export async function geocode(query: string, count = 6): Promise<GeoResult[]> {
 
   return results;
 }
+
 
 /** "Uluwatu, Bali, Indonesia" from a geocoder result. */
 export function geoLabel(r: GeoResult): string {
