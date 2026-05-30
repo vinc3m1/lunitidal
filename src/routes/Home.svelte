@@ -154,6 +154,9 @@
           {dayStart}
           {dayEnd}
           heightUnit={$settings.heightUnit}
+          timeFormat={$settings.timeFormat}
+          {tz}
+          bind:scrubMs
         />
       {/if}
     </div>

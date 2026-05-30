@@ -1,13 +1,18 @@
 <script lang="ts">
-  import type { HeightUnit } from '../engine/types';
+  import type { HeightUnit, TimeFormat } from '../engine/types';
   import { formatHeight } from '../engine/units';
-  import { getMarine, type MarineData } from '../sources/marine';
+  import { formatTime } from '../engine/time';
+  import { getMarine, type MarineData, type MarinePoint } from '../sources/marine';
+  import { makeScale, buildLinePath } from '../chart/geometry';
 
   export let lat: number;
   export let lon: number;
   export let dayStart: Date;
   export let dayEnd: Date;
   export let heightUnit: HeightUnit;
+  export let timeFormat: TimeFormat;
+  export let tz: string;
+  export let scrubMs: number;
 
   type State = 'loading' | 'ready' | 'offline' | 'nodata' | 'error';
   let state: State = 'loading';
@@ -43,24 +48,110 @@
     load();
   }
 
-  // Sparkline of wave height across the day.
-  $: heights = data ? data.points.map((p) => p.waveHeight ?? 0) : [];
-  $: maxH = heights.length ? Math.max(...heights, 0.1) : 1;
-  $: spark =
-    data && data.points.length
-      ? data.points
-          .map((p, i) => {
-            const x = (i / Math.max(1, data!.points.length - 1)) * 100;
-            const y = 28 - ((p.waveHeight ?? 0) / maxH) * 26;
-            return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
-          })
-          .join(' ')
-      : '';
+  function findClosestPoint(points: MarinePoint[], targetMs: number): MarinePoint | null {
+    if (!points || points.length === 0) return null;
+    let closest = points[0];
+    let minDiff = Math.abs(closest.time.getTime() - targetMs);
+    for (let i = 1; i < points.length; i++) {
+      const diff = Math.abs(points[i].time.getTime() - targetMs);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = points[i];
+      }
+    }
+    return closest;
+  }
+
+  $: closestPoint = findClosestPoint(data?.points ?? [], scrubMs);
+  $: activePoint = closestPoint || data?.peak;
+
+  // Sparkline/chart geometry setup.
+  $: chartPoints = data ? data.points.map((p) => ({
+    time: p.time,
+    level: p.waveHeight ?? 0,
+  })) : [];
+  $: levels = chartPoints.map((p) => p.level);
+  $: rawMin = 0;
+  $: rawMax = levels.length ? Math.max(...levels, 0.1) : 1;
+  $: vpad = (rawMax - rawMin) * 0.15 || 0.5;
+
+  let width = 360;
+  let container: HTMLDivElement;
+  let dragging = false;
+
+  $: scale = makeScale({
+    width,
+    height: 60,
+    padding: { top: 8, right: 16, bottom: 8, left: 44 },
+    startMs: dayStart.getTime(),
+    endMs: dayEnd.getTime(),
+    minLevel: 0,
+    maxLevel: rawMax + vpad,
+  });
+
+  $: linePath = buildLinePath(chartPoints, scale);
+
+  $: scrubX = closestPoint ? scale.xOf(closestPoint.time.getTime()) : scale.xOf(scrubMs);
+  $: scrubY = closestPoint && closestPoint.waveHeight != null ? scale.yOf(closestPoint.waveHeight) : scale.yOf(0);
+
+  function setScrubFromClientX(clientX: number) {
+    if (!container || !scale || !data?.points.length) return;
+    const rect = container.getBoundingClientRect();
+    const targetMs = scale.msOf(clientX - rect.left);
+    const closest = findClosestPoint(data.points, targetMs);
+    if (closest) {
+      scrubMs = closest.time.getTime();
+    }
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    dragging = true;
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    setScrubFromClientX(e.clientX);
+  }
+  function onPointerMove(e: PointerEvent) {
+    if (dragging) setScrubFromClientX(e.clientX);
+  }
+  function onPointerUp() {
+    dragging = false;
+  }
+
+  function onKeydown(e: KeyboardEvent) {
+    if (!data?.points.length || !closestPoint) return;
+    const idx = data.points.indexOf(closestPoint);
+    if (idx === -1) return;
+    let nextIdx = idx;
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        nextIdx = Math.max(0, idx - 1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowUp':
+        nextIdx = Math.min(data.points.length - 1, idx + 1);
+        break;
+      case 'Home':
+        nextIdx = 0;
+        break;
+      case 'End':
+        nextIdx = data.points.length - 1;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    scrubMs = data.points[nextIdx].time.getTime();
+  }
 </script>
 
 <section class="card" data-testid="marine-card">
   <div class="head">
-    <h2>Waves &amp; swell</h2>
+    <div class="title-row">
+      <h2>Waves &amp; swell</h2>
+      {#if activePoint}
+        <span class="active-time" data-testid="marine-active-time">{formatTime(activePoint.time, tz, timeFormat)}</span>
+      {/if}
+    </div>
     <span class="src">Open-Meteo</span>
   </div>
 
@@ -72,28 +163,51 @@
     <p class="muted">No marine forecast for this location.</p>
   {:else if state === 'error'}
     <p class="muted">Marine forecast unavailable.</p>
-  {:else if data && data.peak}
+  {:else if data && activePoint}
     <div class="stats">
       <div class="stat">
-        <span class="val">{formatHeight(data.peak.waveHeight ?? 0, heightUnit)}</span>
-        <span class="lbl">peak waves</span>
+        <span class="val">{activePoint.waveHeight != null ? formatHeight(activePoint.waveHeight, heightUnit) : '—'}</span>
+        <span class="lbl">waves</span>
       </div>
-      {#if data.peak.swellHeight != null}
+      {#if activePoint.swellHeight != null}
         <div class="stat">
-          <span class="val">{formatHeight(data.peak.swellHeight, heightUnit)}</span>
+          <span class="val">{formatHeight(activePoint.swellHeight, heightUnit)}</span>
           <span class="lbl">swell</span>
         </div>
       {/if}
-      {#if data.peak.swellPeriod != null}
+      {#if activePoint.swellPeriod != null}
         <div class="stat">
-          <span class="val">{data.peak.swellPeriod.toFixed(0)}s</span>
+          <span class="val">{activePoint.swellPeriod.toFixed(0)}s</span>
           <span class="lbl">period</span>
         </div>
       {/if}
     </div>
-    <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
-      <path d={spark} fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke" />
-    </svg>
+
+    <div class="chart" bind:this={container} bind:clientWidth={width} data-testid="marine-chart-container">
+      <svg
+        {width}
+        height={60}
+        viewBox={`0 0 ${width} 60`}
+        role="slider"
+        aria-label="Wave height over time. Drag, or use arrow keys, to scrub."
+        aria-valuemin={dayStart.getTime()}
+        aria-valuemax={dayEnd.getTime()}
+        aria-valuenow={closestPoint ? closestPoint.time.getTime() : scrubMs}
+        aria-valuetext={closestPoint ? `${formatTime(closestPoint.time, tz, timeFormat)}, waves ${formatHeight(closestPoint.waveHeight ?? 0, heightUnit)}` : ''}
+        tabindex="0"
+        on:pointerdown={onPointerDown}
+        on:pointermove={onPointerMove}
+        on:pointerup={onPointerUp}
+        on:pointercancel={onPointerUp}
+        on:keydown={onKeydown}
+      >
+        <line class="baseline" x1={scale.padding.left} x2={width - scale.padding.right} y1={scale.baselineY} y2={scale.baselineY} />
+        <path d={linePath} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" />
+        
+        <line class="scrubLine" x1={scrubX} x2={scrubX} y1={scale.padding.top} y2={scale.baselineY} />
+        <circle class="scrubDot" cx={scrubX} cy={scrubY} r="5" />
+      </svg>
+    </div>
   {/if}
 </section>
 
@@ -111,10 +225,20 @@
     align-items: center;
     justify-content: space-between;
   }
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
   h2 {
     margin: 0;
     font-size: 0.95rem;
     color: var(--muted);
+    font-weight: 600;
+  }
+  .active-time {
+    color: var(--accent);
+    font-size: 0.85rem;
     font-weight: 600;
   }
   .src {
@@ -142,8 +266,38 @@
     color: var(--muted);
     font-size: 0.78rem;
   }
-  .spark {
+  .chart {
     width: 100%;
-    height: 30px;
+    touch-action: none;
+    user-select: none;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    cursor: ew-resize;
+  }
+  svg:focus {
+    outline: none;
+  }
+  svg:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  .baseline {
+    stroke: var(--muted);
+    stroke-opacity: 0.15;
+    stroke-width: 1.5;
+  }
+  .scrubLine {
+    stroke: var(--text);
+    stroke-width: 1.5;
+  }
+  .scrubDot {
+    fill: var(--text);
+    stroke: var(--bg);
+    stroke-width: 2;
   }
 </style>
+
