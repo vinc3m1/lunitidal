@@ -117,7 +117,7 @@
   function pickStation(s: IndexEntry) {
     void run(() => selectStationId(s.id, s.name));
     if (map) {
-      map.easeTo({ center: [s.lon, s.lat], zoom: 12, duration: 450 });
+      map.easeTo({ center: [s.lon, s.lat], zoom: 12, offset: mode === 'inline' ? [0, 35] : [0, 60], duration: 450 });
     }
     query = '';
     isFocused = false;
@@ -126,7 +126,7 @@
   function pickFavorite(f: Favorite) {
     void run(() => selectFavorite(f));
     if (map) {
-      map.easeTo({ center: [f.lon, f.lat], zoom: 12, duration: 450 });
+      map.easeTo({ center: [f.lon, f.lat], zoom: 12, offset: mode === 'inline' ? [0, 35] : [0, 60], duration: 450 });
     }
     query = '';
     isFocused = false;
@@ -135,7 +135,7 @@
   function pickPlace(p: GeoResult) {
     markLocation({ lat: p.lat, lon: p.lon });
     if (map) {
-      map.easeTo({ center: [p.lon, p.lat], zoom: 12, duration: 450 });
+      map.easeTo({ center: [p.lon, p.lat], zoom: 12, offset: mode === 'inline' ? [0, 35] : [0, 60], duration: 450 });
     }
     void run(() => selectPoint(p.lat, p.lon, geoLabel(p)));
     query = '';
@@ -211,13 +211,20 @@
     stationMarker?.setLngLat(station);
 
     if (selected[0] === station[0] && selected[1] === station[1]) {
-      targetMap.easeTo({ center: selected, zoom: Math.max(targetMap.getZoom(), 10), duration: 450 });
+      targetMap.easeTo({
+        center: selected,
+        zoom: Math.max(targetMap.getZoom(), 10),
+        offset: displayMode === 'inline' ? [0, 35] : [0, 60],
+        duration: 450
+      });
       return;
     }
 
     const bounds = new maplibregl.LngLatBounds(selected, selected).extend(station);
     targetMap.fitBounds(bounds, {
-      padding: displayMode === 'inline' ? 60 : 100,
+      padding: displayMode === 'inline'
+        ? { top: 90, bottom: 40, left: 45, right: 45 }
+        : { top: 150, bottom: 60, left: 60, right: 60 },
       maxZoom: displayMode === 'inline' ? 12 : 13,
       duration: 450,
     });
@@ -231,7 +238,7 @@
       zoom: 9,
       attributionControl: false,
     });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: false },
@@ -246,7 +253,7 @@
     geolocate.on('geolocate', (e: GeolocationPosition) => {
       markLocation({ lat: e.coords.latitude, lon: e.coords.longitude });
     });
-    map.addControl(geolocate, 'top-right');
+    map.addControl(geolocate, 'bottom-right');
     currentMarker = new maplibregl.Marker({ element: makeCurrentMarker(), anchor: 'center' })
       .setLngLat([lon, lat])
       .addTo(map);
