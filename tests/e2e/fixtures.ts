@@ -29,12 +29,13 @@ export const test = base.extend<{ consoleErrors: string[] }>({
         const swellHeights: number[] = [];
         const swellPeriods: number[] = [];
 
-        // Generate 48 hourly points relative to the current UTC day
+        // Generate 72 hourly points starting 24 hours in the past relative to the current UTC day
         const baseDate = new Date();
         baseDate.setUTCHours(0, 0, 0, 0);
+        const startDate = new Date(baseDate.getTime() - 24 * 3600000);
 
-        for (let i = 0; i < 48; i++) {
-          const t = new Date(baseDate.getTime() + i * 3_600_000);
+        for (let i = 0; i < 72; i++) {
+          const t = new Date(startDate.getTime() + i * 3600000);
           const timeStr = t.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
           times.push(timeStr);
 
