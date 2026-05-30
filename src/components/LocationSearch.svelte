@@ -3,8 +3,10 @@
   import { loadIndex, searchByName } from '../engine/stations';
   import type { IndexEntry } from '../engine/types';
   import { geocode, geoLabel, type GeoResult } from '../sources/geocode';
-  import { selectPoint, selectStationId } from '../stores/selection';
-  import { favorites, isLegacyLabel } from '../stores/favorites';
+  import { selectFavorite, selectPoint, selectStationId } from '../stores/selection';
+  import { favorites, type Favorite } from '../stores/favorites';
+  import { settings } from '../stores/settings';
+  import { formatDistance } from '../engine/units';
 
   const dispatch = createEventDispatcher<{ close: void; openmap: void }>();
 
@@ -78,9 +80,7 @@
   const pickPlace = (p: GeoResult) =>
     withBusy(`place-${p.id}`, () => selectPoint(p.lat, p.lon, geoLabel(p)));
   const pickStation = (s: IndexEntry) => withBusy(`st-${s.id}`, () => selectStationId(s.id, s.name));
-  const pickFavorite = (lat: number, lon: number, label: string) =>
-    // Drop legacy labels so the station name is used instead of a stale "my location".
-    withBusy('fav', () => selectPoint(lat, lon, isLegacyLabel(label) ? undefined : label));
+  const pickFavorite = (f: Favorite) => withBusy('fav', () => selectFavorite(f));
 </script>
 
 <div
@@ -130,8 +130,13 @@
       <ul class="results" data-testid="favorites">
         {#each $favorites as f}
           <li>
-            <button type="button" on:click={() => pickFavorite(f.lat, f.lon, f.label)}>
-              <span class="star">★</span>{f.label}
+            <button type="button" on:click={() => pickFavorite(f)}>
+              <span class="name"><span class="star">★</span>{f.label}</span>
+              {#if f.stationName && f.stationName !== f.label}
+                <span class="sub">
+                  {f.stationName}{f.km != null ? ` · ${formatDistance(f.km, $settings.distanceUnit)} away` : ''}
+                </span>
+              {/if}
             </button>
           </li>
         {/each}

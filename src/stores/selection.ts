@@ -2,7 +2,7 @@ import { get, writable } from 'svelte/store';
 import { loadIndex, loadSeedStation, loadStation, nearest } from '../engine/stations';
 import type { Station } from '../engine/types';
 import { getIpLocation } from '../sources/ipgeo';
-import { isLegacyLabel } from './favorites';
+import { isLegacyLabel, type Favorite } from './favorites';
 import { persisted } from './persisted';
 
 export interface Selection {
@@ -97,7 +97,7 @@ export async function selectPoint(lat: number, lon: number, label?: string): Pro
   commit({ station, label: label || station.name, km: near.km, point: { lat, lon } });
 }
 
-/** Pick a station directly (offline station search / favorite). */
+/** Pick a station directly (offline station search). */
 export async function selectStationId(id: string, label: string): Promise<void> {
   const station = await loadStation(id);
   commit({
@@ -106,4 +106,18 @@ export async function selectStationId(id: string, label: string): Promise<void> 
     km: null,
     point: { lat: station.latitude, lon: station.longitude },
   });
+}
+
+/** Re-select a saved favorite by its stored station (stable — no re-snapping). */
+export async function selectFavorite(fav: Favorite): Promise<void> {
+  if (fav.stationId) {
+    try {
+      const station = await loadStation(fav.stationId);
+      commit({ station, label: fav.label, km: fav.km ?? null, point: { lat: fav.lat, lon: fav.lon } });
+      return;
+    } catch {
+      /* saved station unavailable — re-snap from the point */
+    }
+  }
+  await selectPoint(fav.lat, fav.lon, isLegacyLabel(fav.label) ? undefined : fav.label);
 }

@@ -26,6 +26,10 @@ if (process.env.SHOT_STORAGE) {
 }
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.waitForSelector('svg[role="slider"]', { timeout: 20_000 });
+if (process.env.SHOT_CLICK) {
+  await page.getByTestId(process.env.SHOT_CLICK).click();
+  await page.waitForTimeout(400);
+}
 await page.screenshot({ path: OUT, fullPage: process.env.SHOT_FULL !== '0' });
 await browser.close();
 console.log('wrote', OUT);
