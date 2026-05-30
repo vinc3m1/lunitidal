@@ -90,7 +90,24 @@ test('searching and selecting a subordinate station works without crashes and di
   // Verify that the tide predictions are visible (extremes table loaded successfully)
   await expect(page.locator('.extremes li').first()).toBeVisible();
 
+  // Verify that the map displays the subordinate selected marker hexagon
+  await expect(page.locator('.selected-station-marker.subordinate')).toBeVisible();
+
   // Navigate to Detail view and verify that Subordinate Offsets are displayed
   await page.getByTestId('nav-detail').click();
   await expect(page.getByRole('heading', { name: 'Subordinate Offsets' })).toBeVisible();
+});
+
+test('token-based multi-word search matches "Oakland, CA" successfully', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  
+  // Search for "oakland ca" in any order/case
+  await page.getByTestId('search-input').fill('oakland ca');
+  
+  // Verify that the station "Oakland" appears in the results
+  const result = page.getByTestId('station-result').first();
+  await expect(result).toBeVisible();
+  await expect(result).toContainText('Oakland');
+  await expect(result).toContainText('CA');
 });
