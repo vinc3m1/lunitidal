@@ -26,6 +26,10 @@ if (process.env.SHOT_STORAGE) {
 }
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.waitForSelector('svg[role="slider"]', { timeout: 20_000 });
+if (process.env.SHOT_FOCUS) {
+  await page.locator('svg[role="slider"]').focus();
+  for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
+}
 if (process.env.SHOT_CLICK) {
   await page.getByTestId(process.env.SHOT_CLICK).click();
   await page.waitForTimeout(400);

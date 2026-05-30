@@ -63,6 +63,38 @@
   function onPointerUp() {
     dragging = false;
   }
+
+  function onKeydown(e: KeyboardEvent) {
+    const STEP = 10 * 60_000; // 10 min
+    const PAGE = 60 * 60_000; // 1 hour
+    let next = clampedScrub;
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        next -= STEP;
+        break;
+      case 'ArrowRight':
+      case 'ArrowUp':
+        next += STEP;
+        break;
+      case 'PageDown':
+        next -= PAGE;
+        break;
+      case 'PageUp':
+        next += PAGE;
+        break;
+      case 'Home':
+        next = startMs;
+        break;
+      case 'End':
+        next = endMs;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    scrubMs = Math.min(endMs, Math.max(startMs, next));
+  }
 </script>
 
 <div class="chart" bind:this={container} bind:clientWidth={width}>
@@ -71,15 +103,17 @@
     {height}
     viewBox={`0 0 ${width} ${height}`}
     role="slider"
-    aria-label="Tide height over time. Drag to scrub."
+    aria-label="Tide height over time. Drag, or use arrow keys, to scrub."
     aria-valuemin={startMs}
     aria-valuemax={endMs}
     aria-valuenow={clampedScrub}
+    aria-valuetext={`${formatTime(scrubDate, tz, timeFormat)}, ${formatHeight(scrubLevel, heightUnit)}`}
     tabindex="0"
     on:pointerdown={onPointerDown}
     on:pointermove={onPointerMove}
     on:pointerup={onPointerUp}
     on:pointercancel={onPointerUp}
+    on:keydown={onKeydown}
   >
     <defs>
       <linearGradient id="tideFill" x1="0" y1="0" x2="0" y2="1">
@@ -133,6 +167,11 @@
   }
   svg:focus {
     outline: none;
+  }
+  svg:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 8px;
   }
   .grid {
     stroke: var(--muted);

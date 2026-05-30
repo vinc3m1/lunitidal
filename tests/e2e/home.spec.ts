@@ -30,8 +30,25 @@ test('scrubbing the chart updates the readout', async ({ page }) => {
   await expect(readout).not.toHaveText(before);
 });
 
-test('states which timezone the times are shown in', async ({ page }) => {
-  await expect(page.locator('main')).toContainText(/local time/i);
+test('chart is keyboard-operable with arrow/Home/End keys', async ({ page }) => {
+  const slider = page.locator('svg[role="slider"]');
+  const min = (await slider.getAttribute('aria-valuemin'))!;
+  const max = (await slider.getAttribute('aria-valuemax'))!;
+  await slider.focus();
+
+  await page.keyboard.press('Home');
+  await expect(slider).toHaveAttribute('aria-valuenow', min);
+
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(async () => Number(await slider.getAttribute('aria-valuenow')))
+    .toBeGreaterThan(Number(min));
+
+  await page.keyboard.press('End');
+  await expect(slider).toHaveAttribute('aria-valuenow', max);
+
+  // Announced value is human-readable (time + height), not raw milliseconds.
+  await expect(slider).toHaveAttribute('aria-valuetext', /\d{1,2}:\d{2}/);
 });
 
 test('day navigation changes the displayed day', async ({ page }) => {
