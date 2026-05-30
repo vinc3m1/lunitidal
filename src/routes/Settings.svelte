@@ -26,6 +26,7 @@
   const setDist = (v: 'km' | 'mi') => settings.update((s) => ({ ...s, distanceUnit: v }));
   const setTime = (v: '24h' | '12h') => settings.update((s) => ({ ...s, timeFormat: v }));
   const setTheme = (v: 'dark' | 'light' | 'auto') => settings.update((s) => ({ ...s, theme: v }));
+  const toggleMarine = () => settings.update((s) => ({ ...s, showMarine: !s.showMarine }));
   const removeFav = (id: string) => favorites.update((l) => l.filter((f) => f.id !== id));
 </script>
 
@@ -76,6 +77,13 @@
           >{o.label}</button
         >
       {/each}
+    </div>
+  </div>
+  <div class="row">
+    <span>Marine conditions<br /><small>Waves &amp; swell (needs connection)</small></span>
+    <div class="seg" data-testid="seg-marine">
+      <button type="button" class:active={$settings.showMarine} on:click={toggleMarine}>On</button>
+      <button type="button" class:active={!$settings.showMarine} on:click={toggleMarine}>Off</button>
     </div>
   </div>
 </section>
@@ -195,5 +203,10 @@
     color: var(--muted);
     font-size: 0.85rem;
     line-height: 1.45;
+  }
+  .row small {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 0.75rem;
   }
 </style>

@@ -25,6 +25,9 @@ page.on('console', (m) => {
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.waitForSelector('svg[role="slider"]', { timeout: 20_000 });
 
+// Marine card present (online-only layer; renders a state regardless of fetch)
+const marinePresent = (await page.getByTestId('marine-card').count()) > 0;
+
 // Scrub drag updates readout
 const before = clean(await page.textContent('.readout'));
 const box = await page.locator('svg[role="slider"]').boundingBox();
@@ -98,6 +101,7 @@ console.log('FEET_APPLIED:', /ft/.test(readoutFt), '|', readoutFt);
 console.log('CONSTITUENT_ROWS:', constituentRows);
 console.log('DATUM_OPTIONS:', datumOptions);
 console.log('MAP_OPENED:', mapOpened);
+console.log('MARINE_PRESENT:', marinePresent);
 console.log('RELOAD_PERSISTED:', reloadOk);
 console.log('PAGE_ERRORS:', errors.length ? errors.join(' | ') : 'none');
 const ok =
@@ -110,5 +114,6 @@ const ok =
   /ft/.test(readoutFt) &&
   constituentRows > 10 &&
   datumOptions > 1 &&
-  mapOpened;
+  mapOpened &&
+  marinePresent;
 console.log(ok ? 'VERIFY_OK' : 'VERIFY_FAIL');

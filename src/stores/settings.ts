@@ -8,6 +8,7 @@ export interface Settings {
   /** Chart datum key, or null to use each station's own chart_datum. */
   datum: string | null;
   theme: 'dark' | 'light' | 'auto';
+  showMarine: boolean;
 }
 
 export const defaultSettings: Settings = {
@@ -16,6 +17,7 @@ export const defaultSettings: Settings = {
   timeFormat: '24h',
   datum: null,
   theme: 'dark',
+  showMarine: true,
 };
 
 export const settings = persisted<Settings>('lunitidal:settings', defaultSettings);

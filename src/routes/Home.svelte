@@ -12,6 +12,7 @@
   import ExtremesTable from '../components/ExtremesTable.svelte';
   import LocationBar from '../components/LocationBar.svelte';
   import LocationSearch from '../components/LocationSearch.svelte';
+  import MarineCard from '../components/MarineCard.svelte';
 
   let now = new Date();
   let dayOffset = 0;
@@ -131,6 +132,16 @@
       bind:scrubMs
     />
   </section>
+
+  {#if $settings.showMarine}
+    <MarineCard
+      lat={$selection.point.lat}
+      lon={$selection.point.lon}
+      {dayStart}
+      {dayEnd}
+      heightUnit={$settings.heightUnit}
+    />
+  {/if}
 
   <section class="card">
     <div class="card-head">
