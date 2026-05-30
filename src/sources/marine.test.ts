@@ -6,7 +6,7 @@ const start = new Date('2026-05-30T00:00:00Z');
 const end = new Date('2026-05-31T00:00:00Z');
 
 describe('marine parsing', () => {
-  it('windows hourly data to [start, end) and parses UTC times', () => {
+  it('windows hourly data to [start, end] and parses UTC times', () => {
     const data = {
       hourly: {
         time: ['2026-05-29T23:00', day(0), day(12), day(23), '2026-05-31T00:00'],
@@ -16,8 +16,9 @@ describe('marine parsing', () => {
       },
     };
     const out = parseMarine(data, start, end);
-    expect(out.points).toHaveLength(3); // 23:00 prev day and 00:00 next day excluded
+    expect(out.points).toHaveLength(4); // 23:00 prev day excluded, 00:00 next day included
     expect(out.points[0].time.toISOString()).toBe('2026-05-30T00:00:00.000Z');
+    expect(out.points[3].time.toISOString()).toBe('2026-05-31T00:00:00.000Z');
   });
 
   it('selects the peak-wave hour', () => {

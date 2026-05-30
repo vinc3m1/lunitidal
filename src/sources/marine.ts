@@ -40,7 +40,7 @@ export function parseMarine(data: unknown, start: Date, end: Date): MarineData {
     // timezone=UTC → "YYYY-MM-DDTHH:mm"; append Z to parse as a UTC instant.
     const t = new Date(`${h.time[i]}Z`);
     const ms = t.getTime();
-    if (ms < startMs || ms >= endMs) continue;
+    if (ms < startMs || ms > endMs) continue;
     points.push({
       time: t,
       waveHeight: h.wave_height?.[i] ?? null,
@@ -63,11 +63,19 @@ export async function getMarine(
   start: Date,
   end: Date,
 ): Promise<MarineData> {
+  // Buffer 1 day before and after to ensure full coverage of any timezone offset
+  const startBuf = new Date(start.getTime() - 86_400_000);
+  const endBuf = new Date(end.getTime() + 86_400_000);
+  const start_date = startBuf.toISOString().slice(0, 10);
+  const end_date = endBuf.toISOString().slice(0, 10);
+
   const params = new URLSearchParams({
     latitude: lat.toFixed(4),
     longitude: lon.toFixed(4),
     hourly: 'wave_height,swell_wave_height,swell_wave_period',
     timezone: 'UTC',
+    start_date,
+    end_date,
   });
   const res = await fetch(`https://marine-api.open-meteo.com/v1/marine?${params}`);
   if (!res.ok) throw new Error(`Marine API failed (${res.status})`);
