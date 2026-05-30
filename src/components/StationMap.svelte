@@ -117,6 +117,11 @@
       positionOptions: { enableHighAccuracy: false },
       showUserLocation: false,
       trackUserLocation: false,
+      fitBoundsOptions: {
+        maxZoom: 15,
+        linear: true,
+        duration: 450,
+      },
     });
     geolocate.on('geolocate', (e: GeolocationPosition) => {
       markLocation({ lat: e.coords.latitude, lon: e.coords.longitude });

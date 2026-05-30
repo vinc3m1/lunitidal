@@ -48,4 +48,5 @@ apparent from there or the code.
 - First load calls geojs.io for an approximate IP default location. The e2e fixture
   (`tests/e2e/fixtures.ts`) aborts that route so the default is deterministically the Benoa
   seed; a test wanting the IP path registers its own `page.route(/get\.geojs\.io/, …)` first.
+- Always add/update tests (unit tests in `src/` or E2E tests in `tests/e2e/`) when fixing bugs or implementing new features to ensure coverage remains high and prevents regressions.
 - Verify changes with `bun run test:all` before committing.
