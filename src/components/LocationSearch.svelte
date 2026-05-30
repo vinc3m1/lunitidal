@@ -132,11 +132,6 @@
           <li>
             <button type="button" on:click={() => pickFavorite(f)}>
               <span class="name"><span class="star">★</span>{f.label}</span>
-              {#if f.stationName && f.stationName !== f.label}
-                <span class="sub">
-                  {f.stationName}{f.km != null ? ` · ${formatDistance(f.km, $settings.distanceUnit)} away` : ''}
-                </span>
-              {/if}
             </button>
           </li>
         {/each}

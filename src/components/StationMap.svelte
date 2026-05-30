@@ -376,7 +376,11 @@
       <div class="search-backdrop" on:click={() => (isFocused = false)}></div>
     {/if}
 
-    <div class="map-search-container" class:highlighted={highlightActive}>
+    <div
+      class="map-search-container"
+      class:highlighted={highlightActive}
+      class:wide-search={query.trim() && stationResults.length && placeResults.length}
+    >
       <div class="search-bar">
         <span class="search-icon">🔍</span>
         <input
@@ -395,7 +399,11 @@
       </div>
 
       {#if isFocused}
-        <div class="search-dropdown-wrapper" data-testid="search-results-dropdown">
+        <div
+          class="search-dropdown-wrapper"
+          class:has-dual-results={query.trim() && stationResults.length && placeResults.length}
+          data-testid="search-results-dropdown"
+        >
           <button
             class="search-dropdown-btn"
             type="button"
@@ -412,44 +420,54 @@
           {/if}
 
           {#if !query && $favorites && $favorites.length}
-            <div class="search-section-title">Favorites</div>
-            <ul class="search-dropdown-list" data-testid="favorites">
-              {#each $favorites as f}
-                <li>
-                  <button class="search-dropdown-item" type="button" on:click={() => pickFavorite(f)}>
-                    <span class="search-item-name"><span class="star">★</span>{f.label}</span>
-                  </button>
-                </li>
-              {/each}
-            </ul>
+            <div class="search-favorites-container">
+              <div class="search-section-title sticky-title">Favorites</div>
+              <ul class="search-dropdown-list" data-testid="favorites">
+                {#each $favorites as f}
+                  <li>
+                    <button class="search-dropdown-item" type="button" on:click={() => pickFavorite(f)}>
+                      <span class="search-item-name"><span class="star">★</span>{f.label}</span>
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+            </div>
           {/if}
 
-          {#if stationResults.length}
-            <div class="search-section-title">Tide Stations</div>
-            <ul class="search-dropdown-list">
-              {#each stationResults as s}
-                <li>
-                  <button class="search-dropdown-item" type="button" data-testid="station-result" on:click={() => pickStation(s)}>
-                    <span class="search-item-name">⚓ {s.name}</span>
-                    <span class="search-item-sub">{[s.region, s.country].filter(Boolean).join(', ')}</span>
-                  </button>
-                </li>
-              {/each}
-            </ul>
-          {/if}
+          {#if query.trim()}
+            <div class="search-results-grid" class:dual-columns={stationResults.length && placeResults.length}>
+              {#if stationResults.length}
+                <div class="search-results-column">
+                  <div class="search-section-title sticky-title">Tide Stations</div>
+                  <ul class="search-dropdown-list">
+                    {#each stationResults as s}
+                      <li>
+                        <button class="search-dropdown-item" type="button" data-testid="station-result" on:click={() => pickStation(s)}>
+                          <span class="search-item-name">⚓ {s.name}</span>
+                          <span class="search-item-sub">{[s.region, s.country].filter(Boolean).join(', ')}</span>
+                        </button>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
 
-          {#if placeResults.length}
-            <div class="search-section-title">Places</div>
-            <ul class="search-dropdown-list">
-              {#each placeResults as p}
-                <li>
-                  <button class="search-dropdown-item" type="button" data-testid="place-result" on:click={() => pickPlace(p)}>
-                    <span class="search-item-name">🗺️ {p.name}</span>
-                    <span class="search-item-sub">{[p.admin1, p.country].filter(Boolean).join(', ')}</span>
-                  </button>
-                </li>
-              {/each}
-            </ul>
+              {#if placeResults.length}
+                <div class="search-results-column">
+                  <div class="search-section-title sticky-title">Places</div>
+                  <ul class="search-dropdown-list">
+                    {#each placeResults as p}
+                      <li>
+                        <button class="search-dropdown-item" type="button" data-testid="place-result" on:click={() => pickPlace(p)}>
+                          <span class="search-item-name">🗺️ {p.name}</span>
+                          <span class="search-item-sub">{[p.admin1, p.country].filter(Boolean).join(', ')}</span>
+                        </button>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+            </div>
           {/if}
 
           {#if query.trim().length >= 3 && !stationResults.length && !placeResults.length}
@@ -571,7 +589,13 @@
     flex-direction: column;
     gap: 0.5rem;
     pointer-events: auto;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+    transition: max-width 0.25s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+  }
+
+  @media (min-width: 500px) {
+    .map-search-container.wide-search {
+      max-width: 34rem;
+    }
   }
   
   .map-overlay .map-search-container {
@@ -664,14 +688,82 @@
     border: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
     border-radius: 0.75rem;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    max-height: 14rem;
+    max-height: 20rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.35rem;
     padding: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--muted) 40%, transparent) transparent;
   }
-  
+
+  .search-dropdown-wrapper::-webkit-scrollbar {
+    width: 6px;
+  }
+  .search-dropdown-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .search-dropdown-wrapper::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
+    border-radius: 3px;
+  }
+  .search-dropdown-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+  }
+
+  .map-overlay .search-dropdown-wrapper {
+    max-height: 32rem;
+  }
+
+  /* Dual column layout for desktop/tablet */
+  .search-results-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  @media (min-width: 500px) {
+    .search-results-grid.dual-columns {
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    
+    .search-dropdown-wrapper.has-dual-results {
+      overflow-y: hidden;
+      max-height: none;
+    }
+    
+    .search-dropdown-wrapper.has-dual-results .search-results-grid.dual-columns {
+      max-height: 20rem;
+    }
+
+    .map-overlay .search-dropdown-wrapper.has-dual-results .search-results-grid.dual-columns {
+      max-height: calc(85vh - 160px);
+    }
+    
+    .search-results-column {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding-right: 0.25rem;
+      scrollbar-width: thin;
+      scrollbar-color: color-mix(in srgb, var(--muted) 35%, transparent) transparent;
+    }
+
+    .search-results-column::-webkit-scrollbar {
+      width: 4px;
+    }
+    .search-results-column::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .search-results-column::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--muted) 35%, transparent);
+      border-radius: 2px;
+    }
+  }
+
   .search-section-title {
     font-size: 0.72rem;
     font-weight: 700;
@@ -680,6 +772,18 @@
     color: var(--accent);
     padding: 0.35rem 0.5rem 0.15rem;
     margin: 0;
+  }
+
+  .sticky-title {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: color-mix(in srgb, var(--surface) 95%, transparent 5%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.15rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 10%, transparent);
   }
   
   .search-dropdown-list {
@@ -771,6 +875,12 @@
     left: 1rem;
     right: 5rem;
     max-width: calc(100% - 6rem);
+  }
+
+  @media (min-width: 500px) {
+    .map-overlay .map-search-container.wide-search {
+      max-width: min(40rem, calc(100% - 6rem));
+    }
   }
 
   .shrink-btn-floating {

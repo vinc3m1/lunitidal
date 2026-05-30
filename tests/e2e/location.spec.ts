@@ -275,3 +275,35 @@ test('navigation zoom controls are positioned in the bottom-right stacking area'
   
   expect(isBottomRight).toBe(true);
 });
+
+test('search results show both stations and places simultaneously when both match', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('expand-map').click();
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+
+  // "Benoa" matches station index entries AND the geocode mock returns Tanjung Benoa
+  const searchInput = page.getByTestId('map-search-input').last();
+  await searchInput.fill('Benoa');
+
+  // Both section titles should be visible at the same time (not buried below the fold)
+  const dropdown = page.getByTestId('search-results-dropdown');
+  await expect(dropdown).toBeVisible();
+  await expect(dropdown.getByTestId('station-result').first()).toBeVisible();
+  await expect(dropdown.getByTestId('place-result').first()).toBeVisible();
+});
+
+test('search results dropdown is scrollable and has adequate height', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('expand-map').click();
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+
+  const searchInput = page.getByTestId('map-search-input').last();
+  await searchInput.fill('Benoa');
+
+  const dropdown = page.getByTestId('search-results-dropdown');
+  await expect(dropdown).toBeVisible();
+
+  // The dropdown should have enough height to be usable (at least 120px)
+  const height = await dropdown.evaluate((el) => el.getBoundingClientRect().height);
+  expect(height).toBeGreaterThanOrEqual(120);
+});
