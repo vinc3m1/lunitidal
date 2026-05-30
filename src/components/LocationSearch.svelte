@@ -6,7 +6,7 @@
   import { selectPoint, selectStationId } from '../stores/selection';
   import { favorites } from '../stores/favorites';
 
-  const dispatch = createEventDispatcher<{ close: void }>();
+  const dispatch = createEventDispatcher<{ close: void; openmap: void }>();
 
   let query = '';
   let index: IndexEntry[] = [];
@@ -96,15 +96,20 @@
       <button class="x" type="button" on:click={() => dispatch('close')} aria-label="Close">✕</button>
     </header>
 
-    <button
-      class="geo"
-      type="button"
-      data-testid="use-my-location"
-      disabled={busy === 'geo'}
-      on:click={useMyLocation}
-    >
-      {busy === 'geo' ? 'Locating…' : '📍 Use my location'}
-    </button>
+    <div class="primary-actions">
+      <button
+        class="geo"
+        type="button"
+        data-testid="use-my-location"
+        disabled={busy === 'geo'}
+        on:click={useMyLocation}
+      >
+        {busy === 'geo' ? 'Locating…' : '📍 Use my location'}
+      </button>
+      <button class="map-btn" type="button" data-testid="open-map" on:click={() => dispatch('openmap')}>
+        🗺 Map
+      </button>
+    </div>
 
     <input
       class="search"
@@ -213,6 +218,10 @@
     min-width: 44px;
     min-height: 44px;
   }
+  .primary-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
   .geo,
   .search {
     width: 100%;
@@ -222,6 +231,7 @@
     min-height: 48px;
   }
   .geo {
+    flex: 1;
     background: var(--accent);
     color: var(--bg);
     border: none;
@@ -229,6 +239,17 @@
   }
   .geo:disabled {
     opacity: 0.6;
+  }
+  .map-btn {
+    flex: none;
+    border-radius: 0.7rem;
+    padding: 0.85rem 1.1rem;
+    font-size: 1rem;
+    min-height: 48px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+    font-weight: 600;
   }
   .search {
     background: var(--surface);

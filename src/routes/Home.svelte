@@ -17,6 +17,15 @@
   let dayOffset = 0;
   let scrubMs = now.getTime();
   let showSearch = false;
+  let showMap = false;
+  // Lazy-load MapLibre (heavy) only when the map is first opened.
+  let MapComp: typeof import('../components/StationMap.svelte').default | null = null;
+
+  async function openMap() {
+    if (!MapComp) MapComp = (await import('../components/StationMap.svelte')).default;
+    showSearch = false;
+    showMap = true;
+  }
 
   onMount(() => {
     const iv = setInterval(() => (now = new Date()), 60_000);
@@ -138,7 +147,16 @@
 {/if}
 
 {#if showSearch}
-  <LocationSearch on:close={() => (showSearch = false)} />
+  <LocationSearch on:close={() => (showSearch = false)} on:openmap={openMap} />
+{/if}
+
+{#if showMap && MapComp && $selection}
+  <svelte:component
+    this={MapComp}
+    lat={$selection.point.lat}
+    lon={$selection.point.lon}
+    on:close={() => (showMap = false)}
+  />
 {/if}
 
 <style>

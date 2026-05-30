@@ -53,6 +53,11 @@ const afterSearch = clean(await page.textContent('header.locbar'));
 await page.getByTestId('toggle-favorite').click();
 const favPressed = await page.getByTestId('toggle-favorite').getAttribute('aria-pressed');
 
+// Reload — regression guard for persisted array stores (the favorites `.some` crash).
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('svg[role="slider"]', { timeout: 15_000 });
+const reloadOk = (await page.getByTestId('toggle-favorite').getAttribute('aria-pressed')) === 'true';
+
 // Settings: switch to feet, return home, expect 'ft' in readout
 await page.getByTestId('nav-settings').click();
 await page.getByTestId('unit-ft').click();
@@ -68,6 +73,20 @@ const datumOptions = await page.locator('[data-testid="datum-select"] option').c
 await page.getByTestId('nav-back').click();
 await page.waitForSelector('svg[role="slider"]', { timeout: 10_000 });
 
+// Map: opens overlay + MapLibre canvas mounts (tiles need network; not asserted)
+let mapOpened = false;
+try {
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('open-map').click();
+  await page.getByTestId('map-sheet').waitFor({ timeout: 10_000 });
+  await page.waitForSelector('.maplibregl-canvas', { timeout: 10_000 });
+  mapOpened = true;
+  await page.getByTestId('map-close').click();
+  await page.getByTestId('map-sheet').waitFor({ state: 'detached', timeout: 10_000 });
+} catch (e) {
+  errors.push(`map: ${e instanceof Error ? e.message : String(e)}`);
+}
+
 await page.screenshot({ path: '/tmp/home.png', fullPage: true });
 await browser.close();
 
@@ -78,6 +97,8 @@ console.log('FAV_PRESSED:', favPressed);
 console.log('FEET_APPLIED:', /ft/.test(readoutFt), '|', readoutFt);
 console.log('CONSTITUENT_ROWS:', constituentRows);
 console.log('DATUM_OPTIONS:', datumOptions);
+console.log('MAP_OPENED:', mapOpened);
+console.log('RELOAD_PERSISTED:', reloadOk);
 console.log('PAGE_ERRORS:', errors.length ? errors.join(' | ') : 'none');
 const ok =
   errors.length === 0 &&
@@ -85,7 +106,9 @@ const ok =
   /away/.test(afterGeo) &&
   /Benoa/.test(afterSearch) &&
   favPressed === 'true' &&
+  reloadOk &&
   /ft/.test(readoutFt) &&
   constituentRows > 10 &&
-  datumOptions > 1;
+  datumOptions > 1 &&
+  mapOpened;
 console.log(ok ? 'VERIFY_OK' : 'VERIFY_FAIL');
