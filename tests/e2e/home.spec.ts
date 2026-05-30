@@ -30,6 +30,10 @@ test('scrubbing the chart updates the readout', async ({ page }) => {
   await expect(readout).not.toHaveText(before);
 });
 
+test('states which timezone the times are shown in', async ({ page }) => {
+  await expect(page.locator('main')).toContainText(/local time/i);
+});
+
 test('day navigation changes the displayed day', async ({ page }) => {
   const label = page.locator('.daynav .day');
   const today = (await label.innerText()).trim();

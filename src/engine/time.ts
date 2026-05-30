@@ -24,6 +24,14 @@ export function formatDay(date: Date, timeZone: string): string {
   }).format(date);
 }
 
+/** Short timezone label for an instant in a zone, e.g. "GMT+8" / "EDT". */
+export function tzAbbrev(date: Date, timeZone: string): string {
+  const part = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short' })
+    .formatToParts(date)
+    .find((p) => p.type === 'timeZoneName');
+  return part?.value ?? '';
+}
+
 /** Offset (ms) between wall-clock time in `timeZone` and UTC at a given instant. */
 export function tzOffsetMs(instant: Date, timeZone: string): number {
   const parts = Object.fromEntries(

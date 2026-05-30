@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, formatTime, startOfDayInTz, tzOffsetMs } from './time';
+import { addDays, formatTime, startOfDayInTz, tzAbbrev, tzOffsetMs } from './time';
 
 describe('time', () => {
   it('computes the UTC offset of a timezone at an instant', () => {
@@ -24,6 +24,11 @@ describe('time', () => {
     const midnightWita = new Date('2026-05-29T16:00:00Z');
     expect(formatTime(midnightWita, 'Asia/Makassar', '24h')).toBe('00:00');
     expect(formatTime(midnightWita, 'Asia/Makassar', '12h')).toBe('12:00 AM');
+  });
+
+  it('gives a short timezone label', () => {
+    expect(tzAbbrev(new Date('2026-05-30T00:00:00Z'), 'Asia/Makassar')).toMatch(/GMT\+8|WITA/);
+    expect(tzAbbrev(new Date('2026-07-01T12:00:00Z'), 'America/New_York')).toMatch(/EDT|GMT-4/);
   });
 
   it('adds days as exact 24h steps', () => {
