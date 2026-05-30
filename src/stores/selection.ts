@@ -2,6 +2,7 @@ import { get, writable } from 'svelte/store';
 import { loadIndex, loadSeedStation, loadStation, nearest } from '../engine/stations';
 import type { Station } from '../engine/types';
 import { getIpLocation } from '../sources/ipgeo';
+import { isLegacyLabel } from './favorites';
 import { persisted } from './persisted';
 
 export interface Selection {
@@ -45,7 +46,11 @@ export async function initSelection(): Promise<void> {
     if (last) {
       try {
         const station = await loadStation(last.stationId);
-        selection.set({ station, label: last.label, km: last.km, point: { lat: last.lat, lon: last.lon } });
+        // Heal legacy "My location"-style labels saved before the labelling fix.
+        const label = isLegacyLabel(last.label) ? station.name : last.label;
+        const sel = { station, label, km: last.km, point: { lat: last.lat, lon: last.lon } };
+        selection.set(sel);
+        if (label !== last.label) commit(sel);
         selectionStatus.set('ready');
         return;
       } catch {

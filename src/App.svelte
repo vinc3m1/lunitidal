@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Router from 'svelte-spa-router';
   import { initSelection } from './stores/selection';
+  import { healFavorites } from './stores/favorites';
   import { settings } from './stores/settings';
   import Home from './routes/Home.svelte';
   import Detail from './routes/Detail.svelte';
@@ -16,6 +17,7 @@
 
   onMount(() => {
     initSelection();
+    healFavorites(); // migrate any old "My location"-style favorite labels
     // Best-effort: ask the browser to keep our cached data through storage pressure.
     navigator.storage?.persist?.().catch(() => {});
   });

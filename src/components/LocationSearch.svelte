@@ -4,7 +4,7 @@
   import type { IndexEntry } from '../engine/types';
   import { geocode, geoLabel, type GeoResult } from '../sources/geocode';
   import { selectPoint, selectStationId } from '../stores/selection';
-  import { favorites } from '../stores/favorites';
+  import { favorites, isLegacyLabel } from '../stores/favorites';
 
   const dispatch = createEventDispatcher<{ close: void; openmap: void }>();
 
@@ -79,7 +79,8 @@
     withBusy(`place-${p.id}`, () => selectPoint(p.lat, p.lon, geoLabel(p)));
   const pickStation = (s: IndexEntry) => withBusy(`st-${s.id}`, () => selectStationId(s.id, s.name));
   const pickFavorite = (lat: number, lon: number, label: string) =>
-    withBusy('fav', () => selectPoint(lat, lon, label));
+    // Drop legacy labels so the station name is used instead of a stale "my location".
+    withBusy('fav', () => selectPoint(lat, lon, isLegacyLabel(label) ? undefined : label));
 </script>
 
 <div
