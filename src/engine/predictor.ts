@@ -53,7 +53,6 @@ export function createModel(station: Station | HarmonicConstituent[]): TideModel
     const refModel = createModel(station.referenceStation);
 
     const getSubExtremes = (start: Date, end: Date): Extreme[] => {
-      // Pad reference extremes calculation slightly so we can always interpolate boundary points safely
       const padStart = new Date(start.getTime() - 12 * 3600_000);
       const padEnd = new Date(end.getTime() + 12 * 3600_000);
       const refExtremes = refModel.extremes(padStart, padEnd);
@@ -84,83 +83,44 @@ export function createModel(station: Station | HarmonicConstituent[]): TideModel
 
     const getSubLevelAt = (time: Date, memoExtremes?: Extreme[]): number => {
       const tMs = time.getTime();
-      // Calculate surrounding extremes in subordinate timeline.
-      // Search a wide window around this point (at least 12 hours before and after).
-      const padStart = new Date(tMs - 12 * 3600_000);
-      const padEnd = new Date(tMs + 12 * 3600_000);
-      const subExtremes = memoExtremes || getSubExtremes(padStart, padEnd);
+      const subExtremes = memoExtremes || getSubExtremes(new Date(tMs - 12 * 3600_000), new Date(tMs + 12 * 3600_000));
 
-      // Find the previous extreme and the next extreme
       let prev: Extreme | undefined;
       let next: Extreme | undefined;
 
       for (let i = 0; i < subExtremes.length; i++) {
         const e = subExtremes[i];
-        if (e.time.getTime() <= tMs) {
-          if (!prev || e.time.getTime() > prev.time.getTime()) {
+        const eMs = e.time.getTime();
+        if (eMs <= tMs) {
+          if (!prev || eMs > prev.time.getTime()) {
             prev = e;
           }
         }
-        if (e.time.getTime() >= tMs) {
-          if (!next || e.time.getTime() < next.time.getTime()) {
+        if (eMs >= tMs) {
+          if (!next || eMs < next.time.getTime()) {
             next = e;
           }
         }
       }
 
-      // If we don't have both surrounding extremes, fallback to direct reference scaling
-      if (!prev || !next || prev.time.getTime() === next.time.getTime()) {
-        const refVal = refModel.levelAt(time);
-        if (offsets.height.type === 'ratio') {
-          return refVal * ((offsets.height.high + offsets.height.low) / 2);
-        } else {
-          return refVal + ((offsets.height.high + offsets.height.low) / 2);
-        }
-      }
+      if (!prev && !next) return 0;
+      if (!prev) return next!.level;
+      if (!next) return prev.level;
+      if (prev.time.getTime() === next.time.getTime()) return prev.level;
 
-      // 1. Calculate the fraction of time elapsed in the subordinate interval
-      const subInterval = next.time.getTime() - prev.time.getTime();
-      const p = (tMs - prev.time.getTime()) / subInterval;
-
-      // 2. Find the corresponding reference extremes.
-      // To ensure perfect mathematical correspondence, we map back to the original reference extremes.
-      const prevTimeShift = prev.high ? offsets.time.high : offsets.time.low;
-      const nextTimeShift = next.high ? offsets.time.high : offsets.time.low;
-
-      const refPrevTime = new Date(prev.time.getTime() - prevTimeShift * 60_000);
-      const refNextTime = new Date(next.time.getTime() - nextTimeShift * 60_000);
-
-      // 3. Interpolate the reference time t_ref corresponding to t
-      const tRef = new Date(refPrevTime.getTime() + p * (refNextTime.getTime() - refPrevTime.getTime()));
-
-      // 4. Look up reference levels
-      const refLevel = refModel.levelAt(tRef);
-      const refPrevLevel = refModel.levelAt(refPrevTime);
-      const refNextLevel = refModel.levelAt(refNextTime);
-
-      const refDelta = refNextLevel - refPrevLevel;
-      if (Math.abs(refDelta) < 1e-5) {
-        // High/low heights are identical; avoid division by zero
-        return prev.level + p * (next.level - prev.level);
-      }
-
-      // 5. Calculate reference height ratio (where refLevel is relative to prev and next levels)
-      const hRatio = (refLevel - refPrevLevel) / refDelta;
-
-      // 6. Map to subordinate height range
-      return prev.level + hRatio * (next.level - prev.level);
+      const duration = next.time.getTime() - prev.time.getTime();
+      const fraction = (tMs - prev.time.getTime()) / duration;
+      const cosFactor = (1 - Math.cos(fraction * Math.PI)) / 2;
+      return prev.level + (next.level - prev.level) * cosFactor;
     };
 
     return {
       levelAt: (time) => getSubLevelAt(time),
       extremes: (start, end) => {
-        // Filter out subordinate extremes outside the requested [start, end] window
         const allSubs = getSubExtremes(start, end);
         return allSubs.filter((e) => e.time >= start && e.time <= end);
       },
       timeline: (start, end, timeFidelity = 600) => {
-        // Generate continuous timeline by sampling levelAt
-        // For performance, pre-load a cache of subordinate extremes to avoid re-computing on each levelAt
         const padStart = new Date(start.getTime() - 18 * 3600_000);
         const padEnd = new Date(end.getTime() + 18 * 3600_000);
         const memoExtremes = getSubExtremes(padStart, padEnd);
