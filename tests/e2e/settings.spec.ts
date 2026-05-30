@@ -19,6 +19,22 @@ test('theme selection updates the document theme', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
+test('time format selection switches tide times between 24 hr and AM/PM', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('svg[role="slider"]');
+  await page.getByTestId('nav-settings').click();
+  await page.getByTestId('seg-time').getByRole('button', { name: 'AM/PM' }).click();
+  await page.getByTestId('nav-back').click();
+  await page.waitForSelector('svg[role="slider"]');
+  await expect(page.locator('.readout')).toContainText(/\b(AM|PM)\b/);
+
+  await page.getByTestId('nav-settings').click();
+  await page.getByTestId('seg-time').getByRole('button', { name: '24 hr' }).click();
+  await page.getByTestId('nav-back').click();
+  await page.waitForSelector('svg[role="slider"]');
+  await expect(page.locator('.readout')).not.toContainText(/\b(AM|PM)\b/);
+});
+
 test('marine toggle hides the marine card', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('marine-card').waitFor();

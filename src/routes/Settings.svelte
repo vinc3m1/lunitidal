@@ -13,8 +13,8 @@
     { value: 'mi', label: 'miles' },
   ];
   const timeOpts: Opt<'24h' | '12h'>[] = [
-    { value: '24h', label: '24-hour' },
-    { value: '12h', label: '12-hour' },
+    { value: '24h', label: '24 hr' },
+    { value: '12h', label: 'AM/PM' },
   ];
   const themeOpts: Opt<'dark' | 'light' | 'auto'>[] = [
     { value: 'dark', label: 'Dark' },
@@ -61,7 +61,7 @@
   </div>
   <div class="row">
     <span>Time format</span>
-    <div class="seg">
+    <div class="seg" data-testid="seg-time">
       {#each timeOpts as o}
         <button type="button" class:active={$settings.timeFormat === o.value} on:click={() => setTime(o.value)}
           >{o.label}</button
