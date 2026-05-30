@@ -44,8 +44,14 @@
       class="change"
       type="button"
       data-testid="change-location"
-      on:click={() => dispatch('change')}>Search</button
+      aria-label="Search location"
+      on:click={() => dispatch('change')}
     >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -96,9 +102,19 @@
     background: var(--surface);
     color: var(--text);
     border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
-    border-radius: 999px;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    border-radius: 50%;
+    min-width: 44px;
     min-height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+  .change:hover {
+    background: color-mix(in srgb, var(--surface) 80%, var(--text) 20%);
+  }
+  .change:active {
+    transform: scale(0.95);
   }
 </style>

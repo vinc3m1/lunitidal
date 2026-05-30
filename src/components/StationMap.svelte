@@ -362,107 +362,114 @@
   data-testid={mode === 'overlay' ? 'map-sheet' : 'home-map'}
 >
   {#if mode === 'overlay'}
-    <header>
-      <button class="x" type="button" data-testid="map-close" on:click={() => dispatch('close')} aria-label="Close map"
-        >✕</button
-      >
+    <header class="map-overlay-header">
       <span class="hint">Tap a station, or drop a pin anywhere</span>
+      <button class="x shrink-btn" type="button" data-testid="map-close" on:click={() => dispatch('close')} aria-label="Close map">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 14 10 14 10 20" />
+          <polyline points="20 10 14 10 14 4" />
+          <line x1="14" y1="10" x2="21" y2="3" />
+          <line x1="10" y1="14" x2="3" y2="21" />
+        </svg>
+      </button>
     </header>
   {/if}
 
-  {#if isFocused}
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="search-backdrop" on:click={() => (isFocused = false)}></div>
-  {/if}
-
-  <div class="map-search-container" class:highlighted={highlightActive}>
-    <div class="search-bar">
-      <span class="search-icon">🔍</span>
-      <input
-        bind:this={searchInputEl}
-        type="search"
-        placeholder="Search station, town, beach..."
-        bind:value={query}
-        on:input={onInput}
-        on:focus={() => (isFocused = true)}
-        autocomplete="off"
-        data-testid="map-search-input"
-      />
-      {#if query}
-        <button class="clear-btn" type="button" on:click={clearSearch} aria-label="Clear search">✕</button>
-      {/if}
-    </div>
-
+  {#if mode === 'inline'}
     {#if isFocused}
-      <div class="search-dropdown-wrapper" data-testid="search-results-dropdown">
-        <button
-          class="search-dropdown-btn"
-          type="button"
-          data-testid="use-my-location"
-          disabled={busyGeolocation}
-          on:click={useMyLocation}
-        >
-          <span>📍</span>
-          <span>{busyGeolocation ? 'Locating…' : 'Use my location'}</span>
-        </button>
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div class="search-backdrop" on:click={() => (isFocused = false)}></div>
+    {/if}
 
-        {#if geoError}
-          <p class="search-hint" style="color: var(--falling);">{geoError}</p>
-        {/if}
-
-        {#if !query && $favorites && $favorites.length}
-          <div class="search-section-title">Favorites</div>
-          <ul class="search-dropdown-list" data-testid="favorites">
-            {#each $favorites as f}
-              <li>
-                <button class="search-dropdown-item" type="button" on:click={() => pickFavorite(f)}>
-                  <span class="search-item-name"><span class="star">★</span>{f.label}</span>
-                  {#if f.stationName && f.stationName !== f.label}
-                    <span class="search-item-sub">
-                      {f.stationName}{f.km != null ? ` · ${formatDistance(f.km, $settings.distanceUnit)} away` : ''}
-                    </span>
-                  {/if}
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        {#if stationResults.length}
-          <div class="search-section-title">Tide Stations</div>
-          <ul class="search-dropdown-list">
-            {#each stationResults as s}
-              <li>
-                <button class="search-dropdown-item" type="button" data-testid="station-result" on:click={() => pickStation(s)}>
-                  <span class="search-item-name">⚓ {s.name}</span>
-                  <span class="search-item-sub">{[s.region, s.country].filter(Boolean).join(', ')}</span>
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        {#if placeResults.length}
-          <div class="search-section-title">Places</div>
-          <ul class="search-dropdown-list">
-            {#each placeResults as p}
-              <li>
-                <button class="search-dropdown-item" type="button" data-testid="place-result" on:click={() => pickPlace(p)}>
-                  <span class="search-item-name">🗺️ {p.name}</span>
-                  <span class="search-item-sub">{[p.admin1, p.country].filter(Boolean).join(', ')}</span>
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        {#if query.trim().length >= 3 && !stationResults.length && !placeResults.length}
-          <p class="search-hint">No matches found</p>
+    <div class="map-search-container" class:highlighted={highlightActive}>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input
+          bind:this={searchInputEl}
+          type="search"
+          placeholder="Search station, town, beach..."
+          bind:value={query}
+          on:input={onInput}
+          on:focus={() => (isFocused = true)}
+          autocomplete="off"
+          data-testid="map-search-input"
+        />
+        {#if query}
+          <button class="clear-btn" type="button" on:click={clearSearch} aria-label="Clear search">✕</button>
         {/if}
       </div>
-    {/if}
-  </div>
+
+      {#if isFocused}
+        <div class="search-dropdown-wrapper" data-testid="search-results-dropdown">
+          <button
+            class="search-dropdown-btn"
+            type="button"
+            data-testid="use-my-location"
+            disabled={busyGeolocation}
+            on:click={useMyLocation}
+          >
+            <span>📍</span>
+            <span>{busyGeolocation ? 'Locating…' : 'Use my location'}</span>
+          </button>
+
+          {#if geoError}
+            <p class="search-hint" style="color: var(--falling);">{geoError}</p>
+          {/if}
+
+          {#if !query && $favorites && $favorites.length}
+            <div class="search-section-title">Favorites</div>
+            <ul class="search-dropdown-list" data-testid="favorites">
+              {#each $favorites as f}
+                <li>
+                  <button class="search-dropdown-item" type="button" on:click={() => pickFavorite(f)}>
+                    <span class="search-item-name"><span class="star">★</span>{f.label}</span>
+                    {#if f.stationName && f.stationName !== f.label}
+                      <span class="search-item-sub">
+                        {f.stationName}{f.km != null ? ` · ${formatDistance(f.km, $settings.distanceUnit)} away` : ''}
+                      </span>
+                    {/if}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+
+          {#if stationResults.length}
+            <div class="search-section-title">Tide Stations</div>
+            <ul class="search-dropdown-list">
+              {#each stationResults as s}
+                <li>
+                  <button class="search-dropdown-item" type="button" data-testid="station-result" on:click={() => pickStation(s)}>
+                    <span class="search-item-name">⚓ {s.name}</span>
+                    <span class="search-item-sub">{[s.region, s.country].filter(Boolean).join(', ')}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+
+          {#if placeResults.length}
+            <div class="search-section-title">Places</div>
+            <ul class="search-dropdown-list">
+              {#each placeResults as p}
+                <li>
+                  <button class="search-dropdown-item" type="button" data-testid="place-result" on:click={() => pickPlace(p)}>
+                    <span class="search-item-name">🗺️ {p.name}</span>
+                    <span class="search-item-sub">{[p.admin1, p.country].filter(Boolean).join(', ')}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+
+          {#if query.trim().length >= 3 && !stationResults.length && !placeResults.length}
+            <p class="search-hint">No matches found</p>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  {/if}
 
   <div class="map" bind:this={container}></div>
   {#if picked}
@@ -771,6 +778,44 @@
   .star {
     color: var(--accent);
     margin-right: 0.25rem;
+  }
+
+  /* Hide Webkit native cancel cross button */
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .map-overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    padding-top: calc(0.5rem + env(safe-area-inset-top));
+    background: var(--bg);
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 15%, transparent);
+    width: 100%;
+    z-index: 10;
+  }
+
+  .shrink-btn {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+    border-radius: 50%;
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+  .shrink-btn:hover {
+    background: color-mix(in srgb, var(--surface) 80%, var(--text) 20%);
+  }
+  .shrink-btn:active {
+    transform: scale(0.95);
   }
 </style>
 

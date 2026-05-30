@@ -202,8 +202,13 @@
             <h2>Map</h2>
             <p class="map-hint">Tap a station, or drop a pin anywhere</p>
           </div>
-          <button class="map-expand" type="button" data-testid="expand-map" on:click={openMap}>
-            Expand
+          <button class="map-expand" type="button" data-testid="expand-map" aria-label="Expand map" on:click={openMap}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
           </button>
         </div>
         {#if MapComp}
@@ -325,13 +330,23 @@
     line-height: 1.3;
   }
   .map-expand {
-    border: none;
-    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+    border-radius: 50%;
     background: var(--surface);
     color: var(--accent);
-    padding: 0.45rem 0.75rem;
+    min-width: 40px;
     min-height: 40px;
-    font-weight: 700;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+  .map-expand:hover {
+    background: color-mix(in srgb, var(--surface) 80%, var(--text) 20%);
+  }
+  .map-expand:active {
+    transform: scale(0.95);
   }
   .map-loading {
     min-height: 18rem;
