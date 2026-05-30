@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+
+# Generated at build time by scripts/build-station-index.ts
+public/data/stations-index.json
+public/data/benoa.json
+public/data/stations/

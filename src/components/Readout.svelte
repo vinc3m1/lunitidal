@@ -1,0 +1,79 @@
+<script lang="ts">
+  import type { Extreme, HeightUnit, TimeFormat } from '../engine/types';
+  import { formatHeight, formatCountdown } from '../engine/units';
+  import { formatTime } from '../engine/time';
+
+  export let scrubDate: Date;
+  export let scrubLevel: number;
+  export let levelAt: (t: Date) => number;
+  export let extremes: Extreme[];
+  export let tz: string;
+  export let heightUnit: HeightUnit;
+  export let timeFormat: TimeFormat;
+  export let now: Date;
+
+  // Rising/falling from the local slope (5 min ahead).
+  $: ahead = levelAt(new Date(scrubDate.getTime() + 5 * 60_000));
+  $: rising = ahead > scrubLevel;
+  $: nextExtreme = extremes.find((e) => e.time.getTime() > scrubDate.getTime());
+  $: isNow = Math.abs(scrubDate.getTime() - now.getTime()) < 60_000;
+</script>
+
+<div class="readout">
+  <div class="primary">
+    <span class="state" class:rising class:falling={!rising}>
+      {rising ? '▲ Rising' : '▼ Falling'}
+    </span>
+    <span class="height">{formatHeight(scrubLevel, heightUnit)}</span>
+    <span class="at">{isNow ? 'now' : `at ${formatTime(scrubDate, tz, timeFormat)}`}</span>
+  </div>
+  {#if nextExtreme}
+    <div class="next">
+      Next {nextExtreme.high ? 'high' : 'low'}
+      <strong>{formatHeight(nextExtreme.level, heightUnit)}</strong>
+      at {formatTime(nextExtreme.time, tz, timeFormat)}
+      <span class="muted">
+        (in {formatCountdown(scrubDate.getTime(), nextExtreme.time.getTime())})
+      </span>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .readout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .primary {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+  .state {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .state.rising {
+    color: var(--rising);
+  }
+  .state.falling {
+    color: var(--falling);
+  }
+  .height {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .at {
+    color: var(--muted);
+  }
+  .next {
+    color: var(--text);
+  }
+  .next .muted,
+  .muted {
+    color: var(--muted);
+  }
+</style>
