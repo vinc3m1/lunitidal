@@ -1,12 +1,16 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import type { DistanceUnit } from '../engine/types';
   import { confidenceForKm } from '../engine/confidence';
   import { formatDistance } from '../engine/units';
+
+  const dispatch = createEventDispatcher<{ change: void; togglefav: void }>();
 
   export let name: string;
   /** Distance from the chosen point to this station (km), or null if exact. */
   export let km: number | null = null;
   export let distanceUnit: DistanceUnit;
+  export let isFav = false;
 
   $: conf = km !== null ? confidenceForKm(km) : null;
 </script>
@@ -21,7 +25,25 @@
       </div>
     {/if}
   </div>
-  <button class="change" type="button" on:click>Change</button>
+  <div class="actions">
+    <button
+      class="star"
+      class:on={isFav}
+      type="button"
+      data-testid="toggle-favorite"
+      aria-pressed={isFav}
+      aria-label={isFav ? 'Remove from favorites' : 'Save to favorites'}
+      on:click={() => dispatch('togglefav')}
+    >
+      {isFav ? '★' : '☆'}
+    </button>
+    <button
+      class="change"
+      type="button"
+      data-testid="change-location"
+      on:click={() => dispatch('change')}>Change</button
+    >
+  </div>
 </header>
 
 <style>
@@ -29,7 +51,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
   .name {
     font-size: 1.15rem;
@@ -50,8 +72,24 @@
   .conf.far {
     color: var(--falling);
   }
-  .change {
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
     flex: none;
+  }
+  .star {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 1.4rem;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .star.on {
+    color: var(--accent);
+  }
+  .change {
     background: var(--surface);
     color: var(--text);
     border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
