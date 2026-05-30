@@ -7,12 +7,9 @@ Status legend: ⬜ todo · ✅ done · 🚧 partial/deferred
 
 ## P1 — bugs / honesty / accessibility
 
-- 🚧 **Timezone is unlabeled.** Tide times render in the *station's* timezone with
-  nothing saying so — a traveler viewing a far-away station sees times that look local
-  but aren't. *Attempted (a `tzAbbrev()` helper exists + is unit-tested) but the
-  `Home.svelte` UI edits kept getting reverted by an editor/format step, so it was
-  deferred to avoid blocking other fixes.* Add "· GMT+8" to the day nav and a "times
-  shown in station local time" note. Effort: S.
+- ✅ **Timezone is unlabeled.** Day nav now shows "· GMT+8" and the tides card notes
+  "Times shown in GMT+8 — the station's local time" (via `tzAbbrev()`), so a traveler
+  viewing a far-away station can tell the times aren't on their own clock.
 - ✅ **Favorites stored coords+label but not the station** (silent drift) and
   `favoriteId` collided at ~110 m. Now persist stationId/stationName/distance, re-select
   the exact station, show it in the list, and key ids to ~11 m. Plus a one-time
