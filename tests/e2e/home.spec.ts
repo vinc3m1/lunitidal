@@ -32,6 +32,7 @@ test('scrubbing the chart updates the readout', async ({ page }) => {
 
 test('chart is keyboard-operable with arrow/Home/End keys', async ({ page }) => {
   const slider = page.locator('svg[role="slider"]');
+  const readout = page.locator('.readout');
   const min = (await slider.getAttribute('aria-valuemin'))!;
   const max = (await slider.getAttribute('aria-valuemax'))!;
   await slider.focus();
@@ -46,6 +47,8 @@ test('chart is keyboard-operable with arrow/Home/End keys', async ({ page }) => 
 
   await page.keyboard.press('End');
   await expect(slider).toHaveAttribute('aria-valuenow', max);
+  await expect(readout).toContainText(/Next (high|low)/);
+  await expect(readout).not.toContainText('(in ');
 
   // Announced value is human-readable (time + height), not raw milliseconds.
   await expect(slider).toHaveAttribute('aria-valuetext', /\d{1,2}:\d{2}/);

@@ -56,6 +56,9 @@
   $: extremes = (model ? model.extremes(dayStart, dayEnd) : []).map(
     (e): Extreme => ({ ...e, level: e.level + offset }),
   );
+  $: readoutExtremes = (model ? model.extremes(dayStart, addDays(dayEnd, 1)) : []).map(
+    (e): Extreme => ({ ...e, level: e.level + offset }),
+  );
   $: levelAtDisplay = (t: Date): number => (model ? model.levelAt(t) + offset : 0);
 
   $: scrubDate = new Date(Math.min(dayEnd.getTime(), Math.max(dayStart.getTime(), scrubMs)));
@@ -110,7 +113,7 @@
       {scrubDate}
       {scrubLevel}
       levelAt={levelAtDisplay}
-      {extremes}
+      extremes={readoutExtremes}
       {tz}
       heightUnit={$settings.heightUnit}
       timeFormat={$settings.timeFormat}

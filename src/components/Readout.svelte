@@ -2,6 +2,7 @@
   import type { Extreme, HeightUnit, TimeFormat } from '../engine/types';
   import { formatHeight, formatCountdown } from '../engine/units';
   import { formatTime } from '../engine/time';
+  import { getReadoutState } from './readout';
 
   export let scrubDate: Date;
   export let scrubLevel: number;
@@ -12,11 +13,13 @@
   export let timeFormat: TimeFormat;
   export let now: Date;
 
-  // Rising/falling from the local slope (5 min ahead).
-  $: ahead = levelAt(new Date(scrubDate.getTime() + 5 * 60_000));
-  $: rising = ahead > scrubLevel;
-  $: nextExtreme = extremes.find((e) => e.time.getTime() > scrubDate.getTime());
-  $: isNow = Math.abs(scrubDate.getTime() - now.getTime()) < 60_000;
+  $: ({ nextExtreme, isNow, rising, showCountdown } = getReadoutState({
+    scrubDate,
+    scrubLevel,
+    levelAt,
+    extremes,
+    now,
+  }));
 </script>
 
 <div class="readout">
@@ -28,13 +31,15 @@
     <span class="at">{isNow ? 'now' : `at ${formatTime(scrubDate, tz, timeFormat)}`}</span>
   </div>
   {#if nextExtreme}
-    <div class="next">
+    <div class="next" data-testid="next-extreme">
       Next {nextExtreme.high ? 'high' : 'low'}
       <strong>{formatHeight(nextExtreme.level, heightUnit)}</strong>
       at {formatTime(nextExtreme.time, tz, timeFormat)}
-      <span class="muted">
-        (in {formatCountdown(scrubDate.getTime(), nextExtreme.time.getTime())})
-      </span>
+      {#if showCountdown}
+        <span class="muted">
+          (in {formatCountdown(now.getTime(), nextExtreme.time.getTime())})
+        </span>
+      {/if}
     </div>
   {/if}
 </div>
