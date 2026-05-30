@@ -42,8 +42,6 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - name: Build
-        env:
-          BASE_PATH: /lunitidal/
         run: bun run build
       - uses: actions/upload-pages-artifact@v3
         with:

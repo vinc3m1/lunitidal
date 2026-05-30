@@ -2,9 +2,8 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// GitHub Pages serves project sites under /<repo>/ — the deploy workflow sets
-// BASE_PATH=/lunitidal/. Locally this stays '/'. Routing is hash-based, so only
-// asset URLs care about the base.
+// The custom domain serves the app at the root. If this is deployed as a
+// GitHub Pages project site again, set BASE_PATH to the repository path.
 const base = process.env.BASE_PATH || '/';
 
 export default defineConfig({
