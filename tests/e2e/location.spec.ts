@@ -156,3 +156,50 @@ test('token-based multi-word search matches "Oakland, CA" successfully', async (
   await expect(result).toContainText('Oakland');
   await expect(result).toContainText('CA');
 });
+
+test('online place search with state abbreviation matches "Oakland CA" successfully', async ({ page }) => {
+  // Mock the geocoding API for this test to return Oakland, California, simulating suffix matching
+  await page.route(/geocoding-api\.open-meteo\.com/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        results: [
+          {
+            id: 99999,
+            name: 'Oakland',
+            admin1: 'California',
+            country: 'United States',
+            latitude: 37.8044,
+            longitude: -122.2712,
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  
+  // Search for "Oakland CA" (Open-Meteo place geocoding API)
+  await page.getByTestId('map-search-input').fill('Oakland CA');
+  
+  // Verify that the place result "Oakland, California" appears
+  const result = page.getByTestId('place-result').first();
+  await expect(result).toBeVisible();
+  await expect(result).toContainText('Oakland');
+  await expect(result).toContainText('California');
+});
+
+test('only one search bar exists and is hidden when expanded', async ({ page }) => {
+  await page.goto('/');
+  // 1. Inline map search is visible
+  await expect(page.getByTestId('map-search-input')).toBeVisible();
+  
+  // 2. Expand map
+  await page.getByTestId('expand-map').click();
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+  
+  // 3. No search input exists inside the expanded map sheet (it covers the page and there's no duplicate input)
+  await expect(page.getByTestId('map-sheet').getByTestId('map-search-input')).toHaveCount(0);
+});

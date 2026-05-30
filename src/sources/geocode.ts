@@ -12,19 +12,6 @@ export interface GeoResult {
   lon: number;
 }
 
-const US_STATES: Record<string, string> = {
-  al: 'Alabama', ak: 'Alaska', az: 'Arizona', ar: 'Arkansas', ca: 'California',
-  co: 'Colorado', ct: 'Connecticut', de: 'Delaware', fl: 'Florida', ga: 'Georgia',
-  hi: 'Hawaii', id: 'Idaho', il: 'Illinois', in: 'Indiana', ia: 'Iowa',
-  ks: 'Kansas', ky: 'Kentucky', la: 'Louisiana', me: 'Maine', md: 'Maryland',
-  ma: 'Massachusetts', mi: 'Michigan', mn: 'Minnesota', ms: 'Mississippi', mo: 'Missouri',
-  mt: 'Montana', ne: 'Nebraska', nv: 'Nevada', nh: 'New Hampshire', nj: 'New Jersey',
-  nm: 'New Mexico', ny: 'New York', nc: 'North Carolina', nd: 'North Dakota', oh: 'Ohio',
-  ok: 'Oklahoma', or: 'Oregon', pa: 'Pennsylvania', ri: 'Rhode Island', sc: 'South Carolina',
-  sd: 'South Dakota', tn: 'Tennessee', tx: 'Texas', ut: 'Utah', vt: 'Vermont',
-  va: 'Virginia', wa: 'Washington', wv: 'West Virginia', wi: 'Wisconsin', wy: 'Wyoming'
-};
-
 /** Pure mapping of the Open-Meteo geocoding response → our shape. Unit-tested. */
 export function parseGeoResults(data: unknown): GeoResult[] {
   const results = (data as { results?: Array<Record<string, unknown>> } | null)?.results;
@@ -39,18 +26,31 @@ export function parseGeoResults(data: unknown): GeoResult[] {
   }));
 }
 
+/** Generically match a 2-letter suffix against a text segment using prefix or initials matching. */
+export function matchesSuffix(text: string | undefined, suffix: string): boolean {
+  if (!text) return false;
+  const t = text.toLowerCase().trim();
+  const s = suffix.toLowerCase().trim();
+  
+  // 1. Prefix match (e.g. "California" starts with "ca")
+  if (t.startsWith(s)) return true;
+  
+  // 2. Initials match (e.g. "New York" -> initials "ny" matches "ny")
+  const initials = t.split(/\s+/).map(word => word[0]).join('');
+  if (initials === s) return true;
+  
+  return false;
+}
+
 export async function geocode(query: string, count = 6): Promise<GeoResult[]> {
   let cleaned = query.trim();
-  let stateFilter: string | undefined;
+  let suffix: string | undefined;
 
-  // Extract trailing 2-letter state code (e.g. "oakland ca" -> city "oakland", state "California")
-  const stateMatch = cleaned.match(/\s+([a-zA-Z]{2})$/);
-  if (stateMatch) {
-    const code = stateMatch[1].toLowerCase();
-    if (US_STATES[code]) {
-      cleaned = cleaned.replace(/\s+([a-zA-Z]{2})$/, '').trim();
-      stateFilter = US_STATES[code];
-    }
+  // Extract trailing 2-letter code (e.g. "oakland ca" -> city "oakland", suffix "ca")
+  const suffixMatch = cleaned.match(/\s+([a-zA-Z]{2})$/);
+  if (suffixMatch) {
+    suffix = suffixMatch[1].toLowerCase();
+    cleaned = cleaned.replace(/\s+([a-zA-Z]{2})$/, '').trim();
   }
 
   const url =
@@ -61,11 +61,11 @@ export async function geocode(query: string, count = 6): Promise<GeoResult[]> {
   
   const results = parseGeoResults(await res.json());
 
-  // Prioritize matches that are in the specified US state
-  if (stateFilter) {
+  // Prioritize matches that align with the suffix in the state or country fields
+  if (suffix) {
     results.sort((a, b) => {
-      const aMatch = a.admin1?.toLowerCase() === stateFilter?.toLowerCase();
-      const bMatch = b.admin1?.toLowerCase() === stateFilter?.toLowerCase();
+      const aMatch = matchesSuffix(a.admin1, suffix!) || matchesSuffix(a.country, suffix!);
+      const bMatch = matchesSuffix(b.admin1, suffix!) || matchesSuffix(b.country, suffix!);
       if (aMatch && !bMatch) return -1;
       if (!aMatch && bMatch) return 1;
       return 0;
