@@ -14,7 +14,11 @@
     '*': Home,
   };
 
-  onMount(() => initSelection());
+  onMount(() => {
+    initSelection();
+    // Best-effort: ask the browser to keep our cached data through storage pressure.
+    navigator.storage?.persist?.().catch(() => {});
+  });
 
   function applyTheme(theme: 'dark' | 'light' | 'auto') {
     if (typeof document === 'undefined') return;

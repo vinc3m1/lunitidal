@@ -10,37 +10,41 @@ permissions:
   pages: write
   id-token: write
 
-# Allow one concurrent deployment; cancel in-progress runs for new pushes.
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
+      - run: bun install --frozen-lockfile
       - name: Generate station data
-        # Produces public/data/* (gitignored); needed by tests and the build.
         run: bun run build:data
-
-      - name: Run tests
+      - name: Unit tests
         run: bun run test
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+      - name: E2E tests
+        run: bun run test:e2e
 
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
       - name: Build
         env:
-          # Project Pages live at https://<user>.github.io/lunitidal/
           BASE_PATH: /lunitidal/
         run: bun run build
-
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

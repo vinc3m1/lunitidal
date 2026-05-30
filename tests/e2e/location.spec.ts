@@ -1,0 +1,41 @@
+import { expect, test } from './fixtures';
+
+test('“use my location” snaps to the nearest station with confidence', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('use-my-location').click();
+  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  const bar = page.locator('header.locbar');
+  await expect(bar).toContainText('away');
+  await expect(bar).toContainText(/good match|approximate|rough estimate|nearest available/);
+});
+
+test('offline station-name search selects a station', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('search-input').fill('Benoa');
+  await page.getByTestId('station-result').first().click();
+  await page.getByTestId('location-sheet').waitFor({ state: 'detached' });
+  await expect(page.locator('header.locbar .name')).toHaveText('Benoa');
+});
+
+test('favorite persists across reload (regression: persisted arrays)', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('svg[role="slider"]');
+  const star = page.getByTestId('toggle-favorite');
+  await star.click();
+  await expect(star).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await page.waitForSelector('svg[role="slider"]');
+  await expect(page.getByTestId('toggle-favorite')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('map opens with a MapLibre canvas', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('open-map').click();
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+  await page.getByTestId('map-close').click();
+  await expect(page.getByTestId('map-sheet')).toHaveCount(0);
+});

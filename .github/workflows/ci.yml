@@ -1,0 +1,28 @@
+name: CI
+
+# Runs the full test suite on PRs and non-main branches (deploy.yml gates main).
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Type check
+        run: bun run check
+      - name: Generate station data
+        run: bun run build:data
+      - name: Unit tests
+        run: bun run test
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+      - name: E2E tests
+        run: bun run test:e2e

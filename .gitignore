@@ -5,6 +5,12 @@ dist-ssr
 .DS_Store
 .vite
 
+# Playwright
+test-results
+playwright-report
+blob-report
+playwright/.cache
+
 # Generated at build time by scripts/build-station-index.ts
 public/data/stations-index.json
 public/data/benoa.json
