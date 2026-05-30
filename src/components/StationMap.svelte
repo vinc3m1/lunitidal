@@ -37,6 +37,21 @@
     el.dataset.testid = 'selected-station-marker';
     el.title = stationName;
     el.setAttribute('aria-label', stationName);
+
+    if (stationType === 'subordinate') {
+      el.innerHTML = `
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17 3 L30 10.5 L30 25.5 L17 33 L4 25.5 L4 10.5 Z" fill="var(--falling)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+        </svg>
+      `;
+    } else {
+      el.innerHTML = `
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17 3 L31 17 L17 31 L3 17 Z" fill="var(--accent)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+        </svg>
+      `;
+    }
+
     return el;
   }
 
@@ -110,7 +125,7 @@
     currentMarker = new maplibregl.Marker({ element: makeCurrentMarker(), anchor: 'center' })
       .setLngLat([lon, lat])
       .addTo(map);
-    stationMarker = new maplibregl.Marker({ element: makeStationMarker(), anchor: 'bottom' })
+    stationMarker = new maplibregl.Marker({ element: makeStationMarker(), anchor: 'center' })
       .setLngLat([stationLon ?? lon, stationLat ?? lat])
       .addTo(map);
 
@@ -186,6 +201,19 @@
     const el = stationMarker.getElement();
     if (el) {
       el.className = `selected-station-marker${stationType === 'subordinate' ? ' subordinate' : ''}`;
+      if (stationType === 'subordinate') {
+        el.innerHTML = `
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 3 L30 10.5 L30 25.5 L17 33 L4 25.5 L4 10.5 Z" fill="var(--falling)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+          </svg>
+        `;
+      } else {
+        el.innerHTML = `
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 3 L31 17 L17 31 L3 17 Z" fill="var(--accent)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+          </svg>
+        `;
+      }
     }
   }
 
@@ -280,22 +308,16 @@
       0 2px 10px rgba(0, 0, 0, 0.45);
   }
   :global(.selected-station-marker) {
-    width: 1.65rem;
-    height: 1.65rem;
-    border: 3px solid #ffffff;
-    border-radius: 0.35rem;
-    background: var(--accent);
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    box-shadow:
-      0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent),
-      0 2px 10px rgba(0, 0, 0, 0.45);
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
-  :global(.selected-station-marker.subordinate) {
-    background: var(--falling);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    box-shadow:
-      0 0 0 4px color-mix(in srgb, var(--falling) 30%, transparent),
-      0 2px 10px rgba(0, 0, 0, 0.45);
+  :global(.selected-station-marker:hover) {
+    transform: scale(1.1);
   }
   :global(.pending-location-marker) {
     width: 1.4rem;
