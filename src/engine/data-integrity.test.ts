@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import index from '../../public/data/stations-index.json';
 import fs from 'node:fs';
 import path from 'node:path';
 import { stationFileSlug } from './paths';
+import type { IndexEntry } from './types';
+
+// Loaded at runtime (not a static import): the index is generated at build time
+// by scripts/build-station-index.ts and is gitignored, so type-checking must not
+// depend on it existing. See CLAUDE.md.
+const index: IndexEntry[] = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../../public/data/stations-index.json'), 'utf8'),
+);
 
 describe('station data integrity', () => {
   it('slim index has active stations', () => {
