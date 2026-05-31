@@ -11,12 +11,17 @@ const benoa: Station = JSON.parse(
   readFileSync(new URL('../public/data/benoa.json', import.meta.url), 'utf8'),
 );
 
+const constituents = benoa.harmonic_constituents;
+if (!constituents) {
+  throw new Error('benoa.json is missing harmonic_constituents — run `bun run build:data` first');
+}
+
 console.log(`Station: ${benoa.name} (${benoa.id})`);
 console.log(`Timezone: ${benoa.timezone}, chart_datum: ${benoa.chart_datum}`);
-console.log(`Constituents: ${benoa.harmonic_constituents.length}`);
+console.log(`Constituents: ${constituents.length}`);
 console.log(`Datums: ${JSON.stringify(benoa.datums)}`);
 
-const model = createModel(benoa.harmonic_constituents);
+const model = createModel(constituents);
 
 // 30 May 2026, local WITA day (00:00 WITA == 29 May 16:00 UTC).
 const start = new Date('2026-05-29T16:00:00Z');

@@ -14,13 +14,18 @@ const benoa: Station = JSON.parse(
   readFileSync(new URL('../../public/data/benoa.json', import.meta.url), 'utf8'),
 );
 
-const model = createModel(benoa.harmonic_constituents);
+const constituents = benoa.harmonic_constituents;
+if (!constituents) {
+  throw new Error('benoa.json is missing harmonic_constituents — run `bun run build:data` first');
+}
+
+const model = createModel(constituents);
 const dayStart = new Date('2026-05-29T16:00:00Z'); // 00:00 WITA, 30 May 2026
 const dayEnd = new Date('2026-05-30T16:00:00Z');
 
 describe('Benoa predictor', () => {
   it('has the expected seed shape', () => {
-    expect(benoa.harmonic_constituents.length).toBeGreaterThanOrEqual(30);
+    expect(constituents.length).toBeGreaterThanOrEqual(30);
     expect(benoa.chart_datum).toBeTruthy();
     expect(benoa.timezone).toBeTruthy();
   });
