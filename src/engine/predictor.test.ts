@@ -1,8 +1,11 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createModel } from './predictor';
 import { toDatum } from './datum';
 import type { Station } from './types';
+// Static import (resolveJsonModule) requires `bun run build:data` to have
+// produced public/data/benoa.json. The `as Station` cast narrows the JSON's
+// widened `type: string` back to the union.
+import benoaJson from '../../public/data/benoa.json';
 
 /**
  * Validates the real Benoa seed (requires `bun run build:data` to have produced
@@ -10,9 +13,7 @@ import type { Station } from './types';
  * heights — TICON-4 amplitudes run ~0.3–0.5 m above the official port solution, so
  * pinning precise metres would be testing the wrong thing. Timing/shape is the point.
  */
-const benoa: Station = JSON.parse(
-  readFileSync(new URL('../../public/data/benoa.json', import.meta.url), 'utf8'),
-);
+const benoa = benoaJson as Station;
 
 const constituents = benoa.harmonic_constituents;
 if (!constituents) {

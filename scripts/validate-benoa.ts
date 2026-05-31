@@ -2,14 +2,12 @@
  * Sanity-check Benoa predictions against published tide tables.
  * Run: `bun run scripts/validate-benoa.ts`
  */
-import { readFileSync } from 'node:fs';
 import { createModel } from '../src/engine/predictor.ts';
 import { toDatum } from '../src/engine/datum.ts';
 import type { Station } from '../src/engine/types.ts';
+import benoaJson from '../public/data/benoa.json';
 
-const benoa: Station = JSON.parse(
-  readFileSync(new URL('../public/data/benoa.json', import.meta.url), 'utf8'),
-);
+const benoa = benoaJson as Station;
 
 const constituents = benoa.harmonic_constituents;
 if (!constituents) {
