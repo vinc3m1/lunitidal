@@ -276,6 +276,34 @@ test('navigation zoom controls are positioned in the bottom-right stacking area'
   expect(isBottomRight).toBe(true);
 });
 
+test('openfreemap attribution is stacked below the zoom controls', async ({ page }) => {
+  await page.goto('/');
+
+  // Wait for the map and its zoom controls to render. (We assert on DOM source
+  // order rather than rendered geometry so the check is deterministic even when
+  // the map tiles/attribution text fail to load, e.g. offline.)
+  const mapEl = page.locator('[data-testid="home-map"] .map');
+  await expect(mapEl).toBeVisible();
+  await expect(page.locator('[data-testid="home-map"] .maplibregl-ctrl-zoom-in')).toBeAttached();
+
+  const attribAfterZoom = await page.evaluate(() => {
+    // In MapLibre's bottom corners, controls are prepended, so the *last* DOM
+    // child renders at the very bottom. The attribution must come after the
+    // zoom control group to sit below it.
+    const corner = document.querySelector('[data-testid="home-map"] .maplibregl-ctrl-bottom-right');
+    const zoomGroup = corner
+      ?.querySelector('.maplibregl-ctrl-zoom-in')
+      ?.closest('.maplibregl-ctrl-group');
+    const attrib = corner?.querySelector('.maplibregl-ctrl-attrib');
+    if (!corner || !zoomGroup || !attrib) return false;
+
+    const children = Array.from(corner.children);
+    return children.indexOf(attrib) > children.indexOf(zoomGroup);
+  });
+
+  expect(attribAfterZoom).toBe(true);
+});
+
 test('search results show both stations and places simultaneously when both match', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('expand-map').click();
