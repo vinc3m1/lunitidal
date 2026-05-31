@@ -1,5 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { geolocationErrorMessage, getCurrentPosition } from './geolocate';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  geolocationErrorMessage,
+  geolocationPermissionState,
+  getCurrentPosition,
+} from './geolocate';
 
 describe('geolocationErrorMessage', () => {
   it('gives actionable guidance for a denied permission (the Android PWA case)', () => {
@@ -23,14 +27,23 @@ describe('geolocationErrorMessage', () => {
 });
 
 describe('getCurrentPosition', () => {
-  const original = globalThis.navigator;
+  const originalNav = globalThis.navigator;
+  const originalWin = (globalThis as { window?: unknown }).window;
   afterEach(() => {
-    Object.defineProperty(globalThis, 'navigator', { value: original, configurable: true });
+    Object.defineProperty(globalThis, 'navigator', { value: originalNav, configurable: true });
+    Object.defineProperty(globalThis, 'window', { value: originalWin, configurable: true });
   });
 
-  function stubNavigator(geolocation: unknown) {
+  function stubNavigator(geolocation: unknown, permissions?: unknown) {
     Object.defineProperty(globalThis, 'navigator', {
-      value: { geolocation },
+      value: { geolocation, permissions },
+      configurable: true,
+    });
+  }
+
+  function stubWindow(isSecureContext: boolean) {
+    Object.defineProperty(globalThis, 'window', {
+      value: { isSecureContext },
       configurable: true,
     });
   }
@@ -54,5 +67,37 @@ describe('getCurrentPosition', () => {
   it('rejects when geolocation is unsupported', async () => {
     stubNavigator(undefined);
     await expect(getCurrentPosition()).rejects.toThrow(/not available/i);
+  });
+
+  it('rejects without prompting on an insecure context (the "never requested" case)', async () => {
+    let called = false;
+    stubNavigator({
+      getCurrentPosition: () => {
+        called = true;
+      },
+    });
+    stubWindow(false);
+    await expect(getCurrentPosition()).rejects.toThrow(/secure \(https\) connection/i);
+    expect(called).toBe(false); // never reached the browser API → no prompt
+  });
+});
+
+describe('geolocationPermissionState', () => {
+  const originalNav = globalThis.navigator;
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'navigator', { value: originalNav, configurable: true });
+  });
+
+  it('returns "unsupported" when the Permissions API is missing', async () => {
+    Object.defineProperty(globalThis, 'navigator', { value: {}, configurable: true });
+    await expect(geolocationPermissionState()).resolves.toBe('unsupported');
+  });
+
+  it('returns the queried state when supported', async () => {
+    Object.defineProperty(globalThis, 'navigator', {
+      value: { permissions: { query: async () => ({ state: 'denied' }) } },
+      configurable: true,
+    });
+    await expect(geolocationPermissionState()).resolves.toBe('denied');
   });
 });
