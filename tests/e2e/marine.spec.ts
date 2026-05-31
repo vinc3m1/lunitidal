@@ -9,6 +9,15 @@ test.describe('Marine Card Interactive Sync and Drag', () => {
     await page.waitForSelector('[data-testid="marine-chart-container"] svg');
   });
 
+  test('shows where the waves are sampled — offshore label + map marker', async ({ page }) => {
+    // The marine mock reports a grid cell several km offshore of the Benoa seed.
+    await expect(page.getByTestId('marine-source')).toContainText('offshore');
+    // And the home map marks that sampled cell.
+    await expect(
+      page.getByTestId('home-map').getByTestId('marine-sample-marker'),
+    ).toBeVisible();
+  });
+
   test('ensures Tide chart and Marine chart have identical widths for perfect scale alignment', async ({ page }) => {
     const tideBox = await page.locator('svg[role="slider"]').first().boundingBox();
     const marineBox = await page.locator('[data-testid="marine-chart-container"] svg').boundingBox();

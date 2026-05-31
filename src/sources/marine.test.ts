@@ -49,13 +49,27 @@ describe('marine parsing', () => {
   });
 
   it('returns empty for missing or fully-null data', () => {
-    expect(parseMarine({}, start, end)).toEqual({ points: [], peak: null });
-    expect(parseMarine(null, start, end)).toEqual({ points: [], peak: null });
+    expect(parseMarine({}, start, end)).toEqual({ points: [], peak: null, sampled: null });
+    expect(parseMarine(null, start, end)).toEqual({ points: [], peak: null, sampled: null });
     const allNull = parseMarine(
       { hourly: { time: [day(0)], wave_height: [null] } },
       start,
       end,
     );
     expect(allNull.peak).toBeNull();
+  });
+
+  it('captures the snapped grid-cell coordinates the API echoes back', () => {
+    const data = {
+      latitude: -8.75,
+      longitude: 115.25,
+      hourly: { time: [day(0)], wave_height: [1.2], swell_wave_height: [0.6], swell_wave_period: [8] },
+    };
+    expect(parseMarine(data, start, end).sampled).toEqual({ lat: -8.75, lon: 115.25 });
+  });
+
+  it('leaves sampled null when the response omits coordinates', () => {
+    const data = { hourly: { time: [day(0)], wave_height: [1.2] } };
+    expect(parseMarine(data, start, end).sampled).toBeNull();
   });
 });

@@ -14,9 +14,17 @@ export interface MarineData {
   points: MarinePoint[];
   /** Highest-wave hour within the window (for the at-a-glance summary). */
   peak: MarinePoint | null;
+  /**
+   * The grid cell Open-Meteo actually sampled. The API snaps the requested point to
+   * its nearest wave-model cell (offshore), which can be some distance from an inland
+   * or bayside point — so we surface it to show *where* the waves are really from.
+   */
+  sampled: { lat: number; lon: number } | null;
 }
 
 interface MarineResponse {
+  latitude?: number;
+  longitude?: number;
   hourly?: {
     time?: string[];
     wave_height?: (number | null)[];
@@ -30,8 +38,13 @@ interface MarineResponse {
  * Unit-tested (UTC parsing, windowing, null handling, peak selection).
  */
 export function parseMarine(data: unknown, start: Date, end: Date): MarineData {
-  const h = (data as MarineResponse | null)?.hourly;
-  if (!h?.time) return { points: [], peak: null };
+  const o = data as MarineResponse | null;
+  const sampled =
+    o && Number.isFinite(o.latitude) && Number.isFinite(o.longitude)
+      ? { lat: o.latitude as number, lon: o.longitude as number }
+      : null;
+  const h = o?.hourly;
+  if (!h?.time) return { points: [], peak: null, sampled };
 
   const startMs = start.getTime();
   const endMs = end.getTime();
@@ -54,7 +67,7 @@ export function parseMarine(data: unknown, start: Date, end: Date): MarineData {
     if (p.waveHeight == null) continue;
     if (!peak || (peak.waveHeight ?? -1) < p.waveHeight) peak = p;
   }
-  return { points, peak };
+  return { points, peak, sampled };
 }
 
 export async function getMarine(

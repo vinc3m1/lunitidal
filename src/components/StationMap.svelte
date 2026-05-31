@@ -16,6 +16,9 @@
   export let stationLon: number | null = null;
   export let stationName = 'Tide station';
   export let stationType: 'reference' | 'subordinate' | null = null;
+  /** Grid cell the marine forecast was sampled from (offshore); null hides the marker. */
+  export let marineLat: number | null = null;
+  export let marineLon: number | null = null;
   export let mode: 'overlay' | 'inline' = 'overlay';
   export let hideSearch = false;
 
@@ -24,6 +27,7 @@
   let map: maplibregl.Map | undefined;
   let currentMarker: maplibregl.Marker | undefined;
   let stationMarker: maplibregl.Marker | undefined;
+  let marineMarker: maplibregl.Marker | undefined;
   let pinMarker: maplibregl.Marker | undefined;
   let picked: { lat: number; lon: number } | null = null;
   let busy = false;
@@ -175,6 +179,65 @@
     return el;
   }
 
+  function makeMarineMarker() {
+    const el = document.createElement('div');
+    el.className = 'marine-sample-marker';
+    el.dataset.testid = 'marine-sample-marker';
+    el.title = 'Waves & swell sampled here';
+    el.setAttribute('aria-label', 'Marine forecast sample point');
+    el.innerHTML = `
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 8c2 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 14c2 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"
+          stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+    return el;
+  }
+
+  /** Show/move/remove the marine marker and the dashed link from the chosen point to it. */
+  function updateMarine(mlat: number | null, mlon: number | null, fromLat: number, fromLon: number) {
+    if (!map) return;
+    if (mlat == null || mlon == null) {
+      marineMarker?.remove();
+      marineMarker = undefined;
+      setMarineLink(null, null, null, null);
+      return;
+    }
+    if (marineMarker) marineMarker.setLngLat([mlon, mlat]);
+    else {
+      marineMarker = new maplibregl.Marker({ element: makeMarineMarker(), anchor: 'center' })
+        .setLngLat([mlon, mlat])
+        .addTo(map);
+    }
+    setMarineLink(fromLon, fromLat, mlon, mlat);
+  }
+
+  function setMarineLink(
+    fromLon: number | null,
+    fromLat: number | null,
+    toLon: number | null,
+    toLat: number | null,
+  ) {
+    const src = map?.getSource('marine-link') as maplibregl.GeoJSONSource | undefined;
+    if (!src) return;
+    const features =
+      fromLon == null || fromLat == null || toLon == null || toLat == null
+        ? []
+        : [
+            {
+              type: 'Feature' as const,
+              geometry: {
+                type: 'LineString' as const,
+                coordinates: [
+                  [fromLon, fromLat],
+                  [toLon, toLat],
+                ],
+              },
+              properties: {},
+            },
+          ];
+    src.setData({ type: 'FeatureCollection', features } as never);
+  }
+
   function makePendingMarker() {
     const el = document.createElement('div');
     el.className = 'pending-location-marker';
@@ -280,6 +343,24 @@
       const attribEl = container.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact');
       if (attribEl) attribEl.classList.remove('maplibregl-compact-show');
 
+      // Dashed link between the chosen point and the offshore cell the waves come from.
+      map.addSource('marine-link', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] } as never,
+      });
+      map.addLayer({
+        id: 'marine-link',
+        type: 'line',
+        source: 'marine-link',
+        layout: { 'line-cap': 'round' },
+        paint: {
+          'line-color': '#0a7ea4',
+          'line-width': 2,
+          'line-opacity': 0.55,
+          'line-dasharray': [1.5, 1.5],
+        },
+      });
+
       map.addSource('stations', { type: 'geojson', data: data as never });
       map.addLayer({
         id: 'stations-c',
@@ -316,6 +397,9 @@
         },
         paint: { 'text-color': '#0b3a5a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
       });
+
+      // Apply any marine sample that arrived while the style was still loading.
+      updateMarine(marineLat, marineLon, lat, lon);
     });
 
     map.on('mouseenter', 'stations-c', () => map && (map.getCanvas().style.cursor = 'pointer'));
@@ -336,6 +420,7 @@
   });
 
   $: if (map) fitSelection(map, lat, lon, stationLat, stationLon, mode);
+  $: if (map) updateMarine(marineLat, marineLon, lat, lon);
   $: if (stationMarker && stationType) {
     const el = stationMarker.getElement();
     if (el) {
@@ -548,6 +633,17 @@
   }
   :global(.selected-station-marker:hover) {
     transform: scale(1.1);
+  }
+  :global(.marine-sample-marker) {
+    width: 1.7rem;
+    height: 1.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    background: #0a7ea4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   :global(.pending-location-marker) {
     width: 1.4rem;

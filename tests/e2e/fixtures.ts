@@ -49,12 +49,30 @@ export const test = base.extend<{ consoleErrors: string[] }>({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
+            // Snapped grid cell offshore of the Benoa seed (~several km away) so the
+            // "offshore" label and the marine map marker are exercised deterministically.
+            latitude: -8.78,
+            longitude: 115.25,
             hourly: {
               time: times,
               wave_height: waveHeights,
               swell_wave_height: swellHeights,
               swell_wave_period: swellPeriods,
             },
+          }),
+        });
+      });
+
+      // Mock BigDataCloud reverse geocoding so dropped pins / "use my location" resolve
+      // to a deterministic place name (offline, fast) instead of hitting the network.
+      await page.route(/bigdatacloud\.net/, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            city: 'Denpasar',
+            principalSubdivision: 'Bali',
+            countryName: 'Indonesia',
           }),
         });
       });
