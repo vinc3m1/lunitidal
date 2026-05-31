@@ -6,11 +6,14 @@ test('“use my location” snaps to the nearest station with confidence', async
   await page.getByTestId('use-my-location').click();
   await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
   const bar = page.locator('header.locbar');
-  await expect(bar).toContainText('away');
-  await expect(bar).toContainText(/good match|approximate|rough estimate|nearest available/);
-  // Label is the nearest station, never a stale "my location".
+  // The closest-station chip carries the snapped station, distance + confidence.
+  const chip = page.getByTestId('closest-station');
+  await expect(chip).toContainText('Closest station');
+  await expect(chip).toContainText('away');
+  await expect(chip).toContainText(/good match|approximate|rough estimate|nearest available/);
+  // The title is the reverse-geocoded place, never a stale "my location".
   await expect(bar).not.toContainText(/my location/i);
-  await expect(page.locator('header.locbar .name')).not.toHaveText('');
+  await expect(page.locator('header.locbar .name')).toContainText('Denpasar');
 });
 
 test('offline station-name search selects a station', async ({ page }) => {

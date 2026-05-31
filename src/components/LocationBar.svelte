@@ -15,20 +15,14 @@
   export let stationName = '';
 
   $: conf = km !== null ? confidenceForKm(km) : null;
-  $: showStation = km !== null && !!stationName && stationName !== name;
 </script>
 
 <header class="locbar">
-  <div class="info">
-    <div class="name">{name}</div>
-    {#if km !== null && conf}
-      <div class="meta">
-        {#if showStation}{stationName} · {/if}{formatDistance(km, distanceUnit)} away ·
-        <span class={`conf ${conf.level}`}>{conf.label}</span>
-      </div>
-    {/if}
-  </div>
-  <div class="actions">
+  <div class="top">
+    <div class="info">
+      <div class="name">{name}</div>
+    </div>
+    <div class="actions">
     <button
       class="star"
       class:on={isFav}
@@ -52,24 +46,70 @@
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
       </svg>
     </button>
+    </div>
   </div>
+
+  {#if km !== null && conf}
+    <div class="station-chip" data-testid="closest-station">
+      <span class="anchor" aria-hidden="true">⚓</span>
+      <span class="chip-text">
+        <span class="chip-label">Closest station:</span>
+        <span class="chip-station">{stationName}</span>
+        <span class="chip-sep">·</span>{formatDistance(km, distanceUnit)} away<span class="chip-sep">·</span><span class={`conf ${conf.level}`}>{conf.label}</span>
+      </span>
+    </div>
+  {/if}
 </header>
 
 <style>
   .locbar {
     display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .top {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+  }
+  .info {
+    min-width: 0;
   }
   .name {
     font-size: 1.15rem;
     font-weight: 700;
   }
-  .meta {
+  .station-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    color: var(--text);
+    font-size: 0.82rem;
+    line-height: 1.25;
+  }
+  .station-chip .anchor {
+    font-size: 0.9rem;
+    flex: none;
+  }
+  .chip-text {
+    min-width: 0;
+  }
+  .chip-label {
     color: var(--muted);
-    font-size: 0.85rem;
-    margin-top: 0.1rem;
+  }
+  .chip-station {
+    font-weight: 700;
+  }
+  .chip-sep {
+    margin: 0 0.35rem;
+    color: var(--muted);
   }
   .conf.good {
     color: var(--accent);

@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { HeightUnit, TimeFormat } from '../engine/types';
-  import { formatHeight } from '../engine/units';
+  import type { DistanceUnit, HeightUnit, TimeFormat } from '../engine/types';
+  import { formatHeight, formatDistance } from '../engine/units';
+  import { haversineKm } from '../engine/stations';
   import { formatTime } from '../engine/time';
   import { getMarine, type MarineData, type MarinePoint } from '../sources/marine';
   import { makeScale, buildLinePath } from '../chart/geometry';
@@ -10,9 +11,15 @@
   export let dayStart: Date;
   export let dayEnd: Date;
   export let heightUnit: HeightUnit;
+  export let distanceUnit: DistanceUnit;
   export let timeFormat: TimeFormat;
   export let tz: string;
   export let scrubMs: number;
+  /**
+   * The grid cell the forecast was actually sampled from, surfaced for the parent so it
+   * can mark it on the map. Bindable — set whenever a fetch resolves with coordinates.
+   */
+  export let sampled: { lat: number; lon: number } | null = null;
 
   type State = 'loading' | 'ready' | 'offline' | 'nodata' | 'error';
   let state: State = 'loading';
@@ -64,6 +71,13 @@
 
   $: closestPoint = findClosestPoint(data?.points ?? [], scrubMs);
   $: activePoint = closestPoint || data?.peak;
+
+  // Surface the sampled grid cell to the parent (for the map marker) and describe how
+  // far offshore it sits from the chosen point — the wave model can't sample inland.
+  $: sampled = data?.sampled ?? null;
+  $: offshoreKm = data?.sampled ? haversineKm(lat, lon, data.sampled.lat, data.sampled.lon) : null;
+  $: offshoreLabel =
+    offshoreKm != null && offshoreKm >= 0.5 ? `~${formatDistance(offshoreKm, distanceUnit)} offshore` : '';
 
   // Sparkline/chart geometry setup.
   $: chartPoints = data ? data.points.map((p) => ({
@@ -160,7 +174,9 @@
         <span class="active-time" data-testid="marine-active-time">{formatTime(activePoint.time, tz, timeFormat)}</span>
       {/if}
     </div>
-    <span class="src">Open-Meteo</span>
+    <span class="src" data-testid="marine-source"
+      >Open-Meteo{#if offshoreLabel} · <span class="offshore">{offshoreLabel}</span>{/if}</span
+    >
   </div>
 
   {#if state === 'loading'}
@@ -253,6 +269,9 @@
   .src {
     color: var(--muted);
     font-size: 0.75rem;
+  }
+  .offshore {
+    color: var(--text);
   }
   .muted {
     margin: 0;

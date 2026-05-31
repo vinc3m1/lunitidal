@@ -17,6 +17,19 @@
   let dayOffset = 0;
   let scrubMs = now.getTime();
   let showMap = false;
+  // Where the marine forecast was actually sampled (offshore grid cell), surfaced by
+  // MarineCard so the map can mark it. Reset on every location change so a stale cell
+  // never lingers on the new map while the next forecast loads.
+  let marineSampled: { lat: number; lon: number } | null = null;
+  let lastPointKey = '';
+  $: if ($selection) {
+    const k = `${$selection.point.lat},${$selection.point.lon}`;
+    if (k !== lastPointKey) {
+      lastPointKey = k;
+      marineSampled = null;
+    }
+  }
+  $: marineMarker = $settings.showMarine ? marineSampled : null;
   // Keep MapLibre split out of the initial bundle; load it after the home shell renders.
   let MapComp: typeof import('../components/StationMap.svelte').default | null = null;
   let mapInstance: any;
@@ -188,9 +201,11 @@
           {dayStart}
           {dayEnd}
           heightUnit={$settings.heightUnit}
+          distanceUnit={$settings.distanceUnit}
           timeFormat={$settings.timeFormat}
           {tz}
           bind:scrubMs
+          bind:sampled={marineSampled}
         />
       {/if}
     </div>
@@ -224,6 +239,8 @@
               stationLon={$selection.station.longitude}
               stationName={$selection.station.name}
               stationType={$selection.station.type}
+              marineLat={marineMarker?.lat ?? null}
+              marineLon={marineMarker?.lon ?? null}
             />
           {/key}
         {:else}
@@ -260,6 +277,8 @@
     stationLon={$selection.station.longitude}
     stationName={$selection.station.name}
     stationType={$selection.station.type}
+    marineLat={marineMarker?.lat ?? null}
+    marineLon={marineMarker?.lon ?? null}
     on:close={() => (showMap = false)}
   />
 {/if}
