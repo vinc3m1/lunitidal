@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import index from '../../public/data/stations-index.json';
 import fs from 'node:fs';
 import path from 'node:path';
 import { stationFileSlug } from './paths';
+import type { IndexEntry } from './types';
+
+// Load the generated index at runtime rather than via a static JSON import, so
+// `bun run check` type-checks without requiring `bun run build:data` to have run
+// first (public/data/ is gitignored and absent in a fresh checkout / CI).
+const index: IndexEntry[] = JSON.parse(
+  fs.readFileSync(new URL('../../public/data/stations-index.json', import.meta.url), 'utf8'),
+);
 
 describe('station data integrity', () => {
   it('slim index has active stations', () => {
