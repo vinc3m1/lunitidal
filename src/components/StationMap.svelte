@@ -238,6 +238,9 @@
       zoom: 9,
       attributionControl: false,
     });
+    // Controls in bottom corners are prepended (each new control inserts above
+    // the previous), so add attribution first to keep it below the zoom controls.
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: false },
@@ -253,7 +256,6 @@
       markLocation({ lat: e.coords.latitude, lon: e.coords.longitude });
     });
     map.addControl(geolocate, 'bottom-right');
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     currentMarker = new maplibregl.Marker({ element: makeCurrentMarker(), anchor: 'center' })
       .setLngLat([lon, lat])
       .addTo(map);
