@@ -6,6 +6,7 @@
   import type { IndexEntry } from '../engine/types';
   import { selectPoint, selectStationId, selectFavorite } from '../stores/selection';
   import { geocode, geoLabel, type GeoResult } from '../sources/geocode';
+  import { getCurrentPosition } from '../sources/geolocate';
   import { favorites, type Favorite } from '../stores/favorites';
   import { settings } from '../stores/settings';
   import { formatDistance } from '../engine/units';
@@ -87,31 +88,23 @@
     }, 1500);
   }
 
-  function useMyLocation() {
-    if (!navigator.geolocation) {
-      geoError = 'Geolocation is not available';
-      return;
-    }
+  async function useMyLocation() {
+    geoError = '';
     busyGeolocation = true;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const latVal = pos.coords.latitude;
-        const lonVal = pos.coords.longitude;
-        markLocation({ lat: latVal, lon: lonVal });
-        if (map) {
-          map.easeTo({ center: [lonVal, latVal], zoom: 12, duration: 450 });
-        }
-        void run(() => selectPoint(latVal, lonVal));
-        busyGeolocation = false;
-        isFocused = false;
-        query = '';
-      },
-      (err) => {
-        geoError = err.message;
-        busyGeolocation = false;
-      },
-      { enableHighAccuracy: false, timeout: 10_000 },
-    );
+    try {
+      const { lat: latVal, lon: lonVal } = await getCurrentPosition();
+      markLocation({ lat: latVal, lon: lonVal });
+      if (map) {
+        map.easeTo({ center: [lonVal, latVal], zoom: 12, duration: 450 });
+      }
+      void run(() => selectPoint(latVal, lonVal));
+      isFocused = false;
+      query = '';
+    } catch (err) {
+      geoError = err instanceof Error ? err.message : String(err);
+    } finally {
+      busyGeolocation = false;
+    }
   }
 
   function pickStation(s: IndexEntry) {
