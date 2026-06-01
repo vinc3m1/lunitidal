@@ -12,6 +12,7 @@
   import ExtremesTable from '../components/ExtremesTable.svelte';
   import LocationBar from '../components/LocationBar.svelte';
   import MarineCard from '../components/MarineCard.svelte';
+  import { REPO_URL } from '../lib/links';
 
   let now = new Date();
   let dayOffset = 0;
@@ -125,7 +126,22 @@
 
 <header class="topbar">
   <h1>Lunitidal</h1>
-  <a class="gear" use:link href="/settings" data-testid="nav-settings" aria-label="Settings">⚙</a>
+  <div class="actions">
+    <a
+      class="icon-link"
+      href={REPO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-testid="nav-github"
+      aria-label="View source on GitHub"
+      title="View source on GitHub"
+    >
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+      </svg>
+    </a>
+    <a class="icon-link gear" use:link href="/settings" data-testid="nav-settings" aria-label="Settings">⚙</a>
+  </div>
 </header>
 
 {#if $selectionStatus === 'loading'}
@@ -259,10 +275,6 @@
       </section>
     </aside>
   </div>
-
-  <footer>
-    <p>Astronomical tide prediction only — not for navigation.</p>
-  </footer>
 {/if}
 
 
@@ -297,14 +309,24 @@
     color: var(--muted);
     font-weight: 600;
   }
-  .gear {
+  .actions {
+    display: flex;
+    align-items: center;
+  }
+  .icon-link {
     text-decoration: none;
-    font-size: 1.3rem;
     color: var(--muted);
     min-width: 44px;
     min-height: 44px;
     display: grid;
     place-items: center;
+    transition: color 0.15s ease;
+  }
+  .icon-link:hover {
+    color: var(--text);
+  }
+  .gear {
+    font-size: 1.3rem;
   }
   .home-grid,
   .main-column,
@@ -423,11 +445,6 @@
     margin: 0;
     color: var(--muted);
     font-size: 0.8rem;
-  }
-  footer {
-    color: var(--muted);
-    font-size: 0.78rem;
-    text-align: center;
   }
 
   @media (min-width: 56rem) {

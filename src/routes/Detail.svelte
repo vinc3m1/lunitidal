@@ -124,10 +124,9 @@
     </section>
   {/if}
 
-  <footer>
-    <p>Astronomical tide prediction only — not for navigation.</p>
-    <p class="muted">Data: {station.source?.name ?? 'TICON-4'} ({station.license?.type ?? 'CC-BY-4.0'})</p>
-  </footer>
+  <p class="source-note">
+    Data: {station.source?.name ?? 'TICON-4'} ({station.license?.type ?? 'CC-BY-4.0'})
+  </p>
 {/if}
 
 <style>
@@ -223,12 +222,10 @@
   a {
     color: var(--accent);
   }
-  footer {
+  .source-note {
+    margin: 0;
     color: var(--muted);
     font-size: 0.78rem;
     text-align: center;
-  }
-  footer p {
-    margin: 0.15rem 0;
   }
 </style>
