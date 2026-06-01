@@ -16,7 +16,7 @@
   export let stationLon: number | null = null;
   export let stationName = 'Tide station';
   export let stationType: 'reference' | 'subordinate' | null = null;
-  /** Grid cell the marine forecast was sampled from (offshore); null hides the marker. */
+  /** Grid cell the marine forecast was sampled from (nearest wave-model cell); null hides the marker. */
   export let marineLat: number | null = null;
   export let marineLon: number | null = null;
   export let mode: 'overlay' | 'inline' = 'overlay';
@@ -375,7 +375,7 @@
       const attribEl = container.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact');
       if (attribEl) attribEl.classList.remove('maplibregl-compact-show');
 
-      // Dashed link between the chosen point and the offshore cell the waves come from.
+      // Dashed link between the chosen point and the grid cell the waves come from.
       map.addSource('marine-link', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] } as never,

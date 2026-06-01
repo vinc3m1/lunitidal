@@ -49,8 +49,8 @@ export const test = base.extend<{ consoleErrors: string[] }>({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            // Snapped grid cell offshore of the Benoa seed (~several km away) so the
-            // "offshore" label and the marine map marker are exercised deterministically.
+            // Snapped grid cell offset from the Benoa seed (~several km away) so the
+            // distance + compass label and the marine map marker are exercised deterministically.
             latitude: -8.78,
             longitude: 115.25,
             hourly: {
