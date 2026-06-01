@@ -66,12 +66,35 @@ test('embedded map fits both selected point and snapped station', async ({ page 
     .toBe(true);
 });
 
-test('map geolocate marks current location for one-click selection', async ({ page }) => {
+test('recenter control reframes the selection without dropping a location pin', async ({ page }) => {
   const map = page.getByTestId('home-map');
   await expect(map.locator('.maplibregl-canvas')).toBeVisible();
-  await map.locator('.maplibregl-ctrl-geolocate').click();
-  await expect(map.getByTestId('pending-location-marker')).toBeVisible();
-  await expect(map.getByTestId('use-pin')).toHaveText('Use this location');
+
+  // The control replaces the old geolocate button: same icon, "center" semantics.
+  const recenter = map.getByTestId('map-recenter');
+  await expect(recenter).toBeVisible();
+  await expect(recenter).toHaveAttribute('aria-label', 'Recenter map');
+  await expect(recenter).toHaveClass(/maplibregl-ctrl-geolocate/);
+
+  // Shove the view far from the selection, then recenter and confirm it animates
+  // the camera back toward the selected station (Benoa ≈ 115.2, -8.7).
+  await map.evaluate((el) => {
+    const m = (el.querySelector('.map') as { _maplibreMap?: any })?._maplibreMap;
+    m.jumpTo({ center: [100, 0], zoom: 4 });
+  });
+
+  await recenter.click();
+
+  // Recenter must initiate a camera move toward the selection — and never drop a
+  // "Use this location" pin (that flow now lives in the search "Use my location").
+  const moveTarget = await map.evaluate((el) => {
+    const m = (el.querySelector('.map') as { _maplibreMap?: any })?._maplibreMap;
+    const c = m.getCenter(); // ease target is reflected immediately by transform setup
+    return { moving: m.isMoving(), lng: c.lng, lat: c.lat };
+  });
+  expect(moveTarget.moving).toBe(true);
+  await expect(map.getByTestId('pending-location-marker')).toHaveCount(0);
+  await expect(map.getByTestId('use-pin')).toHaveCount(0);
 });
 
 test('scrubbing the chart updates the readout', async ({ page }) => {

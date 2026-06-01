@@ -56,51 +56,30 @@ test('map opens with a MapLibre canvas', async ({ page }) => {
   await expect(page.getByTestId('map-sheet')).toHaveCount(0);
 });
 
-test('map geolocate pans quickly and completes transition within 600ms even for far-away locations', async ({ page }) => {
-  // Grant permission and set mock geolocation to a location far from the default (Bali)
-  // We use New York (40.7128, -74.0060)
-  await page.context().setGeolocation({ latitude: 40.7128, longitude: -74.0060 });
-
+test('two-finger tilt is disabled and the map stays flat', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('expand-map').click();
   await expect(page.getByTestId('map-sheet')).toBeVisible();
+  const mapEl = page.locator('[data-testid="map-sheet"] .map');
+  await expect(mapEl).toBeVisible();
 
-  const mapSheet = page.getByTestId('map-sheet');
-  const canvas = mapSheet.locator('.maplibregl-canvas');
-  await expect(canvas).toBeVisible();
-
-  // Click the geolocate control
-  const geolocateBtn = mapSheet.locator('.maplibregl-ctrl-geolocate');
-  await geolocateBtn.click();
-
-  // Wait for 600ms (which is longer than the 450ms transition duration but much shorter than standard flyTo duration)
-  await page.waitForTimeout(600);
-
-  // Verify that the pending marker has arrived and is centered in the map viewport
-  const marker = mapSheet.getByTestId('pending-location-marker');
-  await expect(marker).toBeVisible();
-
-  const isCentered = await page.evaluate(() => {
-    const mapEl = document.querySelector('[data-testid="map-sheet"] .map');
-    const markerEl = document.querySelector('[data-testid="map-sheet"] [data-testid="pending-location-marker"]');
-    if (!mapEl || !markerEl) return false;
-
-    const mapRect = mapEl.getBoundingClientRect();
-    const markerRect = markerEl.getBoundingClientRect();
-
-    const mapCenterX = mapRect.left + mapRect.width / 2;
-    const mapCenterY = mapRect.top + mapRect.height / 2;
-
-    const markerBottomX = markerRect.left + markerRect.width / 2;
-    const markerBottomY = markerRect.bottom;
-
-    // The marker should be very close to the center of the map (within 15 pixels)
-    const dx = Math.abs(mapCenterX - markerBottomX);
-    const dy = Math.abs(mapCenterY - markerBottomY);
-    return dx < 15 && dy < 15;
+  const state = await mapEl.evaluate((el) => {
+    const m = (el as { _maplibreMap?: any })._maplibreMap;
+    if (!m) return null;
+    // Even if a gesture somehow fired, the pitch handler must reject it.
+    m.setPitch(40);
+    return {
+      touchPitchEnabled: m.touchPitch.isEnabled(),
+      pitchAfterSet: m.getPitch(),
+    };
   });
 
-  expect(isCentered).toBe(true);
+  expect(state).not.toBeNull();
+  // The two-finger pitch gesture is turned off...
+  expect(state!.touchPitchEnabled).toBe(false);
+  // ...but programmatic pitch still works, proving we disabled the gesture and not
+  // pitch itself (so future 3D features remain possible).
+  expect(state!.pitchAfterSet).toBeCloseTo(40, 0);
 });
 
 test('dropping a pin on the map displays the "Use this location" button', async ({ page }) => {
