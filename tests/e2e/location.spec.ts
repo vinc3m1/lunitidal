@@ -91,14 +91,52 @@ test('dropping a pin on the map displays the "Use this location" button', async 
   const canvas = page.getByTestId('map-sheet').locator('.maplibregl-canvas');
   await canvas.click({ position: { x: 100, y: 100 } });
 
-  // Verify that the "Use this location" button appears and is visible
-  const usePinBtn = page.getByTestId('use-pin');
+  // Verify that the "Use this location" button appears and is visible. Scope to the
+  // overlay: the proposed pin is shared state, so the (covered) inline map renders one too.
+  const usePinBtn = page.getByTestId('map-sheet').getByTestId('use-pin');
   await expect(usePinBtn).toBeVisible();
   await expect(usePinBtn).toHaveText('Use this location');
 
   // Verify that MapLibre's attribution is in compact form
   const attrib = page.getByTestId('map-sheet').locator('.maplibregl-ctrl-attrib');
   await expect(attrib).toHaveClass(/maplibregl-compact/);
+});
+
+test('the proposed-pin X button clears the dropped pin', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('expand-map').click();
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+
+  const sheet = page.getByTestId('map-sheet');
+  const canvas = sheet.locator('.maplibregl-canvas');
+  await canvas.click({ position: { x: 100, y: 100 } });
+
+  // The pin and its "Use this location" button are present…
+  await expect(sheet.getByTestId('use-pin')).toBeVisible();
+  await expect(sheet.getByTestId('pending-location-marker')).toHaveCount(1);
+
+  // …and clicking the X clears both without committing a new location.
+  await sheet.getByTestId('clear-pin').click();
+  await expect(sheet.getByTestId('use-pin')).toHaveCount(0);
+  await expect(sheet.getByTestId('pending-location-marker')).toHaveCount(0);
+  // Still on the map (no selection happened), default location unchanged.
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+});
+
+test('a proposed pin dropped on the inline map survives expanding to the overlay', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('svg[role="slider"]');
+
+  // Drop a pin on the small inline map (lower-left, clear of the search bar + stations).
+  const inlineCanvas = page.getByTestId('home-map').locator('.maplibregl-canvas');
+  await inlineCanvas.click({ position: { x: 40, y: 180 } });
+  await expect(page.getByTestId('home-map').getByTestId('use-pin')).toBeVisible();
+
+  // Expanding mounts a *separate* map instance; the shared store keeps the pin alive.
+  await page.getByTestId('expand-map').click();
+  await expect(page.getByTestId('map-sheet')).toBeVisible();
+  await expect(page.getByTestId('map-sheet').getByTestId('use-pin')).toBeVisible();
+  await expect(page.getByTestId('map-sheet').getByTestId('pending-location-marker')).toHaveCount(1);
 });
 
 test('searching and selecting a subordinate station works without crashes and displays offsets', async ({ page }) => {

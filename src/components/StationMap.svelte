@@ -7,6 +7,7 @@
   import { selectPoint, selectStationId, selectFavorite } from '../stores/selection';
   import { geocode, geoLabel, type GeoResult } from '../sources/geocode';
   import { favorites, type Favorite } from '../stores/favorites';
+  import { proposed } from '../stores/proposed';
   import { settings } from '../stores/settings';
   import { formatDistance } from '../engine/units';
 
@@ -29,7 +30,6 @@
   let stationMarker: maplibregl.Marker | undefined;
   let marineMarker: maplibregl.Marker | undefined;
   let pinMarker: maplibregl.Marker | undefined;
-  let picked: { lat: number; lon: number } | null = null;
   let busy = false;
 
   // Search functionality variables
@@ -162,28 +162,62 @@
     return el;
   }
 
+  /** Inner markup for the station marker: an anchor badge (reads as "tide station",
+   *  matching the ⚓ used in search) wrapped in an icon layer. The hover-scale lives
+   *  on the inner `.icon` element, NOT the marker root — MapLibre drives panning by
+   *  writing `transform: translate(...)` onto the root, so any `transition` there
+   *  makes the dot lag a frame behind the map. Keeping the transition off the root
+   *  fixes the "spring-loaded" station dot. */
+  function stationIconHtml(type: 'reference' | 'subordinate' | null) {
+    const fill = type === 'subordinate' ? 'var(--falling)' : 'var(--accent)';
+    return `
+      <div class="selected-station-marker-icon">
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="17" cy="17" r="14" fill="${fill}" stroke="#ffffff" stroke-width="3"/>
+          <g transform="translate(8 8) scale(0.75)" stroke="#ffffff" stroke-width="2.4" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22V8"/>
+            <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+            <circle cx="12" cy="5" r="3"/>
+          </g>
+        </svg>
+      </div>`;
+  }
+
   function makeStationMarker() {
     const el = document.createElement('div');
     el.className = `selected-station-marker${stationType === 'subordinate' ? ' subordinate' : ''}`;
     el.dataset.testid = 'selected-station-marker';
     el.title = stationName;
     el.setAttribute('aria-label', stationName);
-
-    if (stationType === 'subordinate') {
-      el.innerHTML = `
-        <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M17 3 L30 10.5 L30 25.5 L17 33 L4 25.5 L4 10.5 Z" fill="var(--falling)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
-        </svg>
-      `;
-    } else {
-      el.innerHTML = `
-        <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M17 3 L31 17 L17 31 L3 17 Z" fill="var(--accent)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
-        </svg>
-      `;
-    }
-
+    el.innerHTML = stationIconHtml(stationType);
     return el;
+  }
+
+  /** Attach a lightweight hover tooltip to a marker so people can tell the dots apart
+   *  (current location vs. tide station vs. waves vs. the pin they just dropped).
+   *  `text` is a getter so labels that change over time (e.g. the station name) stay
+   *  fresh. The popup is non-interactive (pointer-events: none, via CSS) so it can't
+   *  steal the hover and flicker. */
+  function attachHoverPopup(marker: maplibregl.Marker, text: () => string) {
+    const el = marker.getElement();
+    let popup: maplibregl.Popup | undefined;
+    el.addEventListener('mouseenter', () => {
+      if (!map) return;
+      popup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 16,
+        className: 'map-hover-popup',
+      })
+        .setLngLat(marker.getLngLat())
+        .setText(text())
+        .addTo(map);
+    });
+    el.addEventListener('mouseleave', () => {
+      popup?.remove();
+      popup = undefined;
+    });
   }
 
   function makeMarineMarker() {
@@ -214,6 +248,7 @@
       marineMarker = new maplibregl.Marker({ element: makeMarineMarker(), anchor: 'center' })
         .setLngLat([mlon, mlat])
         .addTo(map);
+      attachHoverPopup(marineMarker, () => 'Waves & swell sampled here');
     }
     setMarineLink(fromLon, fromLat, mlon, mlat);
   }
@@ -254,13 +289,26 @@
     return el;
   }
 
+  /** Propose a point. State lives in the shared `proposed` store (not a local var) so
+   *  the pin survives expanding/shrinking the map, where a *separate* StationMap
+   *  instance takes over. `syncProposedMarker` reconciles this instance's pin to it. */
   function markLocation(point: { lat: number; lon: number }) {
-    picked = point;
+    proposed.set(point);
+  }
+
+  function syncProposedMarker(point: { lat: number; lon: number } | null) {
+    if (!map) return;
+    if (!point) {
+      pinMarker?.remove();
+      pinMarker = undefined;
+      return;
+    }
     if (pinMarker) pinMarker.setLngLat([point.lon, point.lat]);
     else {
       pinMarker = new maplibregl.Marker({ element: makePendingMarker(), anchor: 'bottom' })
         .setLngLat([point.lon, point.lat])
-        .addTo(map!);
+        .addTo(map);
+      attachHoverPopup(pinMarker, () => 'Proposed location — “Use this location” to confirm');
     }
   }
 
@@ -354,9 +402,13 @@
     currentMarker = new maplibregl.Marker({ element: makeCurrentMarker(), anchor: 'center' })
       .setLngLat([lon, lat])
       .addTo(map);
+    attachHoverPopup(currentMarker, () => 'Current location');
     stationMarker = new maplibregl.Marker({ element: makeStationMarker(), anchor: 'center' })
       .setLngLat([stationLon ?? lon, stationLat ?? lat])
       .addTo(map);
+    attachHoverPopup(stationMarker, () =>
+      `${stationName} · Tide station${stationType === 'subordinate' ? ' (subordinate)' : ''}`,
+    );
 
     index = await loadIndex();
     const data = {
@@ -453,23 +505,16 @@
 
   $: if (map) fitSelection(map, lat, lon, stationLat, stationLon, mode);
   $: if (map) updateMarine(marineLat, marineLon, lat, lon);
+  // Keep this instance's pin in sync with the shared proposed-location store, so the
+  // dropped pin persists across expand/shrink and clears everywhere when dismissed.
+  $: if (map) syncProposedMarker($proposed);
   $: if (stationMarker && stationType) {
     const el = stationMarker.getElement();
     if (el) {
       el.className = `selected-station-marker${stationType === 'subordinate' ? ' subordinate' : ''}`;
-      if (stationType === 'subordinate') {
-        el.innerHTML = `
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17 3 L30 10.5 L30 25.5 L17 33 L4 25.5 L4 10.5 Z" fill="var(--falling)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
-          </svg>
-        `;
-      } else {
-        el.innerHTML = `
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17 3 L31 17 L17 31 L3 17 Z" fill="var(--accent)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
-          </svg>
-        `;
-      }
+      el.title = stationName;
+      el.setAttribute('aria-label', stationName);
+      el.innerHTML = stationIconHtml(stationType);
     }
   }
 
@@ -479,13 +524,16 @@
     busy = true;
     try {
       await fn();
+      // The selection is committed — drop any uncommitted proposed pin so it doesn't
+      // linger on the map (or reappear on the inline map after the overlay closes).
+      proposed.set(null);
       dispatch('close');
     } finally {
       busy = false;
     }
   }
   // No label → the nearest station's name is used (not a stale "Dropped pin").
-  const useDroppedPin = () => picked && run(() => selectPoint(picked!.lat, picked!.lon));
+  const useDroppedPin = () => $proposed && run(() => selectPoint($proposed!.lat, $proposed!.lon));
 </script>
 
 <div
@@ -613,10 +661,21 @@
   {/if}
 
   <div class="map" bind:this={container}></div>
-  {#if picked}
-    <button class="use-pin" type="button" data-testid="use-pin" disabled={busy} on:click={useDroppedPin}>
-      {busy ? 'Loading…' : 'Use this location'}
-    </button>
+  {#if $proposed}
+    <div class="pin-actions">
+      <button class="use-pin" type="button" data-testid="use-pin" disabled={busy} on:click={useDroppedPin}>
+        {busy ? 'Loading…' : 'Use this location'}
+      </button>
+      <button
+        class="clear-pin"
+        type="button"
+        data-testid="clear-pin"
+        disabled={busy}
+        on:click={() => proposed.set(null)}
+        aria-label="Clear proposed location"
+        title="Clear proposed location"
+      >✕</button>
+    </div>
   {/if}
 </div>
 
@@ -673,9 +732,17 @@
     align-items: center;
     justify-content: center;
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+    /* No transition here: MapLibre pans the marker via `transform: translate(...)` on
+       this root element, so a transform transition would make the dot visibly lag the
+       map. The hover animation lives on the inner .icon instead. */
+  }
+  :global(.selected-station-marker-icon) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
-  :global(.selected-station-marker:hover) {
+  :global(.selected-station-marker:hover .selected-station-marker-icon) {
     transform: scale(1.1);
   }
   :global(.marine-sample-marker) {
@@ -694,16 +761,41 @@
     height: 1.4rem;
     border: 3px solid #ffffff;
     border-radius: 999px;
-    background: var(--falling);
+    background: var(--proposed);
     box-shadow:
-      0 0 0 4px color-mix(in srgb, var(--falling) 30%, transparent),
+      0 0 0 4px color-mix(in srgb, var(--proposed) 30%, transparent),
       0 2px 10px rgba(0, 0, 0, 0.45);
   }
-  .use-pin {
+  /* Hover tooltips distinguishing the map dots. pointer-events: none keeps the popup
+     from stealing hover off the marker (which would make it flicker). */
+  :global(.map-hover-popup) {
+    pointer-events: none;
+  }
+  :global(.map-hover-popup .maplibregl-popup-content) {
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--muted) 25%, transparent);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  }
+  :global(.map-hover-popup .maplibregl-popup-tip) {
+    border-top-color: color-mix(in srgb, var(--surface) 92%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--surface) 92%, transparent);
+  }
+  .pin-actions {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 10;
+  }
+  .use-pin {
     background: var(--accent);
     color: var(--bg);
     border: none;
@@ -713,7 +805,6 @@
     font-size: 1rem;
     min-height: 48px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
-    z-index: 10;
     cursor: pointer;
     transition: filter 0.15s ease, transform 0.1s ease;
   }
@@ -721,7 +812,32 @@
     filter: brightness(1.1);
   }
   .use-pin:active:not(:disabled) {
-    transform: translateX(-50%) scale(0.98);
+    transform: scale(0.98);
+  }
+  .clear-pin {
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--muted) 25%, transparent);
+    border-radius: 999px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    font-size: 1.1rem;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+  .clear-pin:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--surface) 70%, var(--text) 30%);
+  }
+  .clear-pin:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+  .clear-pin:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .map-search-container {

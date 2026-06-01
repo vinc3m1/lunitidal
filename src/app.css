@@ -6,6 +6,9 @@
   --accent: #4cc2ff;
   --rising: #4cc2ff;
   --falling: #ffb454;
+  /* Tentative "proposed" map pin — deliberately distinct from --falling (current
+     location) and --accent (tide station) so the three map dots never blur together. */
+  --proposed: #4ade80;
   color-scheme: dark;
 }
 
@@ -17,6 +20,7 @@
   --accent: #0a7ea4;
   --rising: #0a7ea4;
   --falling: #c9711f;
+  --proposed: #16a34a;
   color-scheme: light;
 }
 
