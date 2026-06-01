@@ -118,6 +118,13 @@
     );
   }
 
+  /** Recenter the map on the current selection (its default framing). Picking a
+   *  brand-new "current location" lives in the search dropdown instead. */
+  function recenterMap() {
+    if (!map) return;
+    fitSelection(map, lat, lon, stationLat, stationLon, mode);
+  }
+
   function pickStation(s: IndexEntry) {
     void run(() => selectStationId(s.id, s.name));
     if (map) {
@@ -300,25 +307,50 @@
       center: [lon, lat],
       zoom: 9,
       attributionControl: false,
+      // Tilting the map adds no value for a 2D tide chart and is easy to trigger
+      // accidentally, so disable the two-finger pitch gesture (and keep it flat).
+      touchPitch: false,
     });
+    // Expose the instance on its container so E2E tests can introspect gesture
+    // config (no public MapLibre API maps a canvas back to its Map).
+    (container as HTMLElement & { _maplibreMap?: maplibregl.Map })._maplibreMap = map;
     // Controls in bottom corners are prepended (each new control inserts above
     // the previous), so add attribution first to keep it below the zoom controls.
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-    const geolocate = new maplibregl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: false },
-      showUserLocation: false,
-      trackUserLocation: false,
-      fitBoundsOptions: {
-        maxZoom: 15,
-        linear: true,
-        duration: 450,
+    // Recenter control: snaps the view back to the selected location. A
+    // bounding-frame (corner brackets + center dot) icon reads as "fit the
+    // selection back into view", distinct from the device-location flow.
+    let recenterContainer: HTMLDivElement | undefined;
+    const recenterControl: maplibregl.IControl = {
+      onAdd() {
+        recenterContainer = document.createElement('div');
+        recenterContainer.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'map-recenter-btn';
+        btn.title = 'Recenter map';
+        btn.setAttribute('aria-label', 'Recenter map');
+        btn.dataset.testid = 'map-recenter';
+        btn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9 V6 a2 2 0 0 1 2 -2 h3" />
+            <path d="M15 4 h3 a2 2 0 0 1 2 2 v3" />
+            <path d="M20 15 v3 a2 2 0 0 1 -2 2 h-3" />
+            <path d="M9 20 H6 a2 2 0 0 1 -2 -2 v-3" />
+            <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+          </svg>`;
+        btn.addEventListener('click', recenterMap);
+        recenterContainer.appendChild(btn);
+        return recenterContainer;
       },
-    });
-    geolocate.on('geolocate', (e: GeolocationPosition) => {
-      markLocation({ lat: e.coords.latitude, lon: e.coords.longitude });
-    });
-    map.addControl(geolocate, 'bottom-right');
+      onRemove() {
+        recenterContainer?.parentNode?.removeChild(recenterContainer);
+        recenterContainer = undefined;
+      },
+    };
+    map.addControl(recenterControl, 'bottom-right');
     currentMarker = new maplibregl.Marker({ element: makeCurrentMarker(), anchor: 'center' })
       .setLngLat([lon, lat])
       .addTo(map);
@@ -589,6 +621,18 @@
 </div>
 
 <style>
+  /* Recenter control button (built imperatively, so styled globally). Matches the
+     sizing of MapLibre's own control buttons and centers the bounding-frame icon. */
+  :global(.map-recenter-btn) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+  }
+  :global(.map-recenter-btn:hover) {
+    color: #000;
+  }
+
   .map-overlay {
     position: fixed;
     inset: 0;
