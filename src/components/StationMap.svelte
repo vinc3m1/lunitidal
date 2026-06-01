@@ -318,9 +318,9 @@
     // the previous), so add attribution first to keep it below the zoom controls.
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-    // Recenter control: snaps the view back to the selected location. It reuses
-    // MapLibre's geolocate button styling (the crosshair-style "locate" icon) so
-    // it reads as a "center on me" affordance without pulling in geolocation.
+    // Recenter control: snaps the view back to the selected location. A
+    // bounding-frame (corner brackets + center dot) icon reads as "fit the
+    // selection back into view", distinct from the device-location flow.
     let recenterContainer: HTMLDivElement | undefined;
     const recenterControl: maplibregl.IControl = {
       onAdd() {
@@ -328,14 +328,19 @@
         recenterContainer.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'maplibregl-ctrl-geolocate';
+        btn.className = 'map-recenter-btn';
         btn.title = 'Recenter map';
         btn.setAttribute('aria-label', 'Recenter map');
         btn.dataset.testid = 'map-recenter';
-        const icon = document.createElement('span');
-        icon.className = 'maplibregl-ctrl-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        btn.appendChild(icon);
+        btn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9 V6 a2 2 0 0 1 2 -2 h3" />
+            <path d="M15 4 h3 a2 2 0 0 1 2 2 v3" />
+            <path d="M20 15 v3 a2 2 0 0 1 -2 2 h-3" />
+            <path d="M9 20 H6 a2 2 0 0 1 -2 -2 v-3" />
+            <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+          </svg>`;
         btn.addEventListener('click', recenterMap);
         recenterContainer.appendChild(btn);
         return recenterContainer;
@@ -616,6 +621,18 @@
 </div>
 
 <style>
+  /* Recenter control button (built imperatively, so styled globally). Matches the
+     sizing of MapLibre's own control buttons and centers the bounding-frame icon. */
+  :global(.map-recenter-btn) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+  }
+  :global(.map-recenter-btn:hover) {
+    color: #000;
+  }
+
   .map-overlay {
     position: fixed;
     inset: 0;

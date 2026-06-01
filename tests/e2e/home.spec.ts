@@ -70,11 +70,11 @@ test('recenter control reframes the selection without dropping a location pin', 
   const map = page.getByTestId('home-map');
   await expect(map.locator('.maplibregl-canvas')).toBeVisible();
 
-  // The control replaces the old geolocate button: same icon, "center" semantics.
+  // The control replaces the old geolocate button with a "fit to view" affordance.
   const recenter = map.getByTestId('map-recenter');
   await expect(recenter).toBeVisible();
   await expect(recenter).toHaveAttribute('aria-label', 'Recenter map');
-  await expect(recenter).toHaveClass(/maplibregl-ctrl-geolocate/);
+  await expect(recenter.locator('svg')).toBeVisible();
 
   // Shove the view far from the selection, then recenter and confirm it animates
   // the camera back toward the selected station (Benoa ≈ 115.2, -8.7).
