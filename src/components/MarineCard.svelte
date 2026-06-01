@@ -211,12 +211,6 @@
               for the water <strong>{sampleLabel.replace('~', 'about ')}</strong> of where you're
               looking, not the shoreline itself.
             </p>
-            <a
-              href="https://github.com/vinc3m1/lunitidal#marine-forecast-waves--swell"
-              target="_blank"
-              rel="noopener"
-              on:click={() => (showInfo = false)}>How this works →</a
-            >
           </div>
         {/if}</span
         >{/if}
@@ -357,20 +351,11 @@
     cursor: default;
   }
   .info-pop p {
-    margin: 0 0 0.5rem;
+    margin: 0;
     color: var(--text);
     font-size: 0.78rem;
     line-height: 1.45;
     font-weight: 400;
-  }
-  .info-pop a {
-    color: var(--accent);
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .info-pop a:hover {
-    text-decoration: underline;
   }
   .muted {
     margin: 0;
