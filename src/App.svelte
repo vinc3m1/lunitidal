@@ -7,6 +7,7 @@
   import Home from './routes/Home.svelte';
   import Detail from './routes/Detail.svelte';
   import Settings from './routes/Settings.svelte';
+  import Footer from './components/Footer.svelte';
 
   const routes = {
     '/': Home,
@@ -37,6 +38,7 @@
 
 <main>
   <Router {routes} />
+  <Footer />
 </main>
 
 <style>

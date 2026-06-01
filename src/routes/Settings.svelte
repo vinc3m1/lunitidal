@@ -2,6 +2,7 @@
   import { link } from 'svelte-spa-router';
   import { settings } from '../stores/settings';
   import { favorites } from '../stores/favorites';
+  import { REPO_URL, LICENSE_URL } from '../lib/links';
 
   type Opt<T> = { value: T; label: string };
   const heightOpts: Opt<'m' | 'ft'>[] = [
@@ -109,9 +110,44 @@
 <section class="card">
   <h2>About</h2>
   <p class="muted">
-    Tide data from TICON-4 / UHSLC via @neaps/tide-database (CC-BY-4.0). Predictions computed
-    on-device with @neaps/tide-predictor (MIT). Place search by Open-Meteo. Astronomical tide
-    only — not for navigation.
+    Lunitidal computes astronomical tide predictions in your browser — no account, no tracking,
+    works offline. Astronomical tide only — <strong>not for navigation</strong>.
+  </p>
+
+  <h3>Credits</h3>
+  <ul class="credits">
+    <li>
+      Tide data: TICON-4 / UHSLC via
+      <a href="https://github.com/neaps/tide-database" target="_blank" rel="noopener noreferrer"
+        >@neaps/tide-database</a
+      > (CC-BY-4.0)
+    </li>
+    <li>
+      Prediction engine: on-device
+      <a href="https://github.com/neaps/tide-predictor" target="_blank" rel="noopener noreferrer"
+        >@neaps/tide-predictor</a
+      > (MIT)
+    </li>
+    <li>
+      Place search &amp; marine forecast:
+      <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
+      (CC-BY-4.0)
+    </li>
+    <li>
+      Approximate IP location:
+      <a href="https://www.geojs.io" target="_blank" rel="noopener noreferrer">geojs.io</a>
+    </li>
+    <li>
+      Map tiles:
+      <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>
+      / OpenStreetMap (ODbL)
+    </li>
+  </ul>
+
+  <p class="muted">
+    Made by Vince Mi ·
+    <a href={REPO_URL} target="_blank" rel="noopener noreferrer">Source on GitHub</a> ·
+    <a href={LICENSE_URL} target="_blank" rel="noopener noreferrer">MIT License</a>
   </p>
 </section>
 
@@ -146,6 +182,36 @@
     margin: 0;
     font-size: 0.95rem;
     color: var(--muted);
+  }
+  h3 {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .credits {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+  .credits li {
+    display: block;
+    background: none;
+    border-radius: 0;
+    padding: 0;
+  }
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
   }
   .row {
     display: flex;
