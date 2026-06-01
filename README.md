@@ -45,6 +45,28 @@ Tide data is from TICON-4 (UHSLC sea-level analysis). Heights can differ from of
 port tables by a few tenths of a metre because it's an independent analysis, not the
 official port solution.
 
+## Marine forecast (waves & swell)
+
+The waves & swell card is a separate, online-only layer from [Open-Meteo](https://open-meteo.com),
+shown on top of the astronomical tide.
+
+Open-Meteo's wave data comes from numerical **wave models** that divide the ocean surface into a
+**grid** of cells — anywhere from a few kilometres to ~25 km across — and each cell holds one
+forecast. Crucially, these models only run **over water**: there's no wave value for land, harbours,
+or small enclosed bays.
+
+So when you pick a spot, the API **snaps** your request to the nearest grid cell that actually has
+data and tells us which cell it used. For a beach, harbour, or bayside point that cell can sit a few
+kilometres away, in any direction. That's why the card labels the source like:
+
+> Open-Meteo · ~2.8 km SSE ⓘ
+
+The number is the distance from **your chosen point** to the **grid cell the forecast came from**,
+and the compass bearing points **from you toward that cell** (here, the waves describe the water
+~2.8 km to the south-southeast). It is **not** a distance to the shoreline. Tap the ⓘ for the same
+explanation in-app. If no usable water cell is nearby, the card shows "No marine forecast for this
+location" instead.
+
 ## Credits
 
 - Tide data: TICON-4 / UHSLC via

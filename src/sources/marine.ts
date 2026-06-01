@@ -15,9 +15,11 @@ export interface MarineData {
   /** Highest-wave hour within the window (for the at-a-glance summary). */
   peak: MarinePoint | null;
   /**
-   * The grid cell Open-Meteo actually sampled. The API snaps the requested point to
-   * its nearest wave-model cell (offshore), which can be some distance from an inland
-   * or bayside point — so we surface it to show *where* the waves are really from.
+   * The grid cell Open-Meteo actually sampled. Its wave models cover the ocean in a grid
+   * of cells (a few km to ~25 km across) that exist only over water, so the API snaps each
+   * request to the nearest cell — which can be some distance, in any direction, from an
+   * inland or bayside point. We surface it to show *where* the waves are really from (and
+   * the UI labels the distance + compass bearing from the chosen point to this cell).
    */
   sampled: { lat: number; lon: number } | null;
 }

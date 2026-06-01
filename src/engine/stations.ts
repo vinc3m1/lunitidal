@@ -33,6 +33,31 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
   return EARTH_RADIUS_KM * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
+const COMPASS_16 = [
+  'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+] as const;
+
+/**
+ * Initial great-circle bearing from point 1 to point 2, in degrees clockwise from
+ * true north (0–360). 0 = due north of point 1, 90 = due east, etc.
+ */
+export function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+  const dLon = toRad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLon);
+  return (Math.atan2(y, x) * (180 / Math.PI) + 360) % 360;
+}
+
+/** Nearest 16-point compass abbreviation (N, NNE, NE, …) for a bearing in degrees. */
+export function compass16(deg: number): string {
+  const i = Math.round((((deg % 360) + 360) % 360) / 22.5) % 16;
+  return COMPASS_16[i];
+}
+
 export interface NearbyStation {
   station: IndexEntry;
   km: number;

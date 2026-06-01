@@ -37,6 +37,7 @@ apparent from there or the code.
 - Routing is **hash-based** (`svelte-spa-router`) so it works under the GitHub Pages
   subpath without server config.
 - **Subordinate stations:** These do not have harmonic constituents and are filtered out at build time (by `scripts/build-station-index.ts`) because the `@neaps/tide-predictor` requires constituents to perform predictions on-device. When a user searches for a subordinate beach, the app automatically snaps to the nearest reference station. (TODO: Add native support for subordinate time/height offsets by warping reference curves).
+- **Marine "sample" label:** Open-Meteo's wave models only cover *water* on a coarse grid, so the API snaps each request to the nearest sea cell — sometimes km away from an inland/bayside point. `MarineCard.svelte` surfaces that as `~<dist> <bearing>` (e.g. `~2.8 km SSE`) using `haversineKm`/`bearingDeg`/`compass16` from the engine; the bearing points *from the chosen point toward the cell*, so it is **not** "distance to shore". User-facing explanation lives in README → [Marine forecast](README.md#marine-forecast-waves--swell), linked from the in-card ⓘ popover.
 
 ## Testing notes
 

@@ -9,13 +9,27 @@ test.describe('Marine Card Interactive Sync and Drag', () => {
     await page.waitForSelector('[data-testid="marine-chart-container"] svg');
   });
 
-  test('shows where the waves are sampled — offshore label + map marker', async ({ page }) => {
-    // The marine mock reports a grid cell several km offshore of the Benoa seed.
-    await expect(page.getByTestId('marine-source')).toContainText('offshore');
+  test('shows where the waves are sampled — distance + compass label + map marker', async ({ page }) => {
+    // The marine mock reports a grid cell several km from the Benoa seed; the label states
+    // the distance and a compass bearing toward that cell (e.g. "~5 km SE"), not "offshore".
+    const source = page.getByTestId('marine-source');
+    await expect(source).toContainText(/~[\d.]+\s*(km|mi)\s+(N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)\b/);
+    await expect(source).not.toContainText('offshore');
     // And the home map marks that sampled cell.
     await expect(
       page.getByTestId('home-map').getByTestId('marine-sample-marker'),
     ).toBeVisible();
+  });
+
+  test('the ⓘ button opens a popover explaining the grid-cell snapping', async ({ page }) => {
+    const info = page.getByTestId('marine-info');
+    await expect(info).toHaveCount(0); // closed by default
+    await page.getByTestId('marine-info-btn').click();
+    await expect(info).toBeVisible();
+    await expect(info).toContainText(/grid|cell|water/i);
+    // Escape closes it again.
+    await page.keyboard.press('Escape');
+    await expect(info).toHaveCount(0);
   });
 
   test('ensures Tide chart and Marine chart have identical widths for perfect scale alignment', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { haversineKm, nearest, searchByName } from './stations';
+import { bearingDeg, compass16, haversineKm, nearest, searchByName } from './stations';
 import type { IndexEntry } from './types';
 
 const entry = (over: Partial<IndexEntry>): IndexEntry => ({
@@ -77,5 +77,28 @@ describe('stations', () => {
   it('haversine is symmetric and zero for identical points', () => {
     expect(haversineKm(10, 20, 10, 20)).toBe(0);
     expect(haversineKm(-8.7, 115.2, 51.5, -0.1)).toBeCloseTo(haversineKm(51.5, -0.1, -8.7, 115.2), 6);
+  });
+
+  it('computes cardinal bearings from a reference point', () => {
+    // Small steps so great-circle ≈ local compass direction.
+    expect(bearingDeg(0, 0, 1, 0)).toBeCloseTo(0, 5); // due north
+    expect(bearingDeg(0, 0, 0, 1)).toBeCloseTo(90, 5); // due east
+    expect(bearingDeg(0, 0, -1, 0)).toBeCloseTo(180, 5); // due south
+    expect(bearingDeg(0, 0, 0, -1)).toBeCloseTo(270, 5); // due west
+  });
+
+  it('points from the chosen point toward the sampled cell (Benoa seed → offshore grid cell)', () => {
+    // Seed ~(-8.745, 115.21), mock grid cell (-8.78, 115.25): south and east → SE quadrant.
+    expect(compass16(bearingDeg(-8.745, 115.21, -8.78, 115.25))).toMatch(/^E?SE$|^SSE$/);
+  });
+
+  it('snaps bearings to the nearest of 16 compass points', () => {
+    expect(compass16(0)).toBe('N');
+    expect(compass16(22.5)).toBe('NNE');
+    expect(compass16(45)).toBe('NE');
+    expect(compass16(247.5)).toBe('WSW');
+    expect(compass16(359)).toBe('N'); // wraps back to N
+    expect(compass16(-22.5)).toBe('NNW'); // negative bearings normalise
+    expect(compass16(360 + 90)).toBe('E'); // > 360 normalises
   });
 });

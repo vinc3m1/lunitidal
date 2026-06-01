@@ -17,7 +17,7 @@
   let dayOffset = 0;
   let scrubMs = now.getTime();
   let showMap = false;
-  // Where the marine forecast was actually sampled (offshore grid cell), surfaced by
+  // Where the marine forecast was actually sampled (nearest wave-model grid cell), surfaced by
   // MarineCard so the map can mark it. Reset on every location change so a stale cell
   // never lingers on the new map while the next forecast loads.
   let marineSampled: { lat: number; lon: number } | null = null;

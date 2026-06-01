@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { DistanceUnit, HeightUnit, TimeFormat } from '../engine/types';
   import { formatHeight, formatDistance } from '../engine/units';
-  import { haversineKm } from '../engine/stations';
+  import { haversineKm, bearingDeg, compass16 } from '../engine/stations';
   import { formatTime } from '../engine/time';
   import { getMarine, type MarineData, type MarinePoint } from '../sources/marine';
   import { makeScale, buildLinePath } from '../chart/geometry';
@@ -72,12 +72,18 @@
   $: closestPoint = findClosestPoint(data?.points ?? [], scrubMs);
   $: activePoint = closestPoint || data?.peak;
 
-  // Surface the sampled grid cell to the parent (for the map marker) and describe how
-  // far offshore it sits from the chosen point — the wave model can't sample inland.
+  // Surface the sampled grid cell to the parent (for the map marker) and describe how far —
+  // and in which direction — it sits from the chosen point. Open-Meteo snaps every request to
+  // the nearest wave-model grid cell (always over water), which can be some distance away for
+  // an inland or bayside point; the compass bearing tells the user which patch of sea the
+  // forecast actually describes (measured from the chosen point toward the cell).
   $: sampled = data?.sampled ?? null;
-  $: offshoreKm = data?.sampled ? haversineKm(lat, lon, data.sampled.lat, data.sampled.lon) : null;
-  $: offshoreLabel =
-    offshoreKm != null && offshoreKm >= 0.5 ? `~${formatDistance(offshoreKm, distanceUnit)} offshore` : '';
+  $: sampleDistanceKm = data?.sampled ? haversineKm(lat, lon, data.sampled.lat, data.sampled.lon) : null;
+  $: sampleBearing = data?.sampled ? compass16(bearingDeg(lat, lon, data.sampled.lat, data.sampled.lon)) : '';
+  $: sampleLabel =
+    sampleDistanceKm != null && sampleDistanceKm >= 0.5
+      ? `~${formatDistance(sampleDistanceKm, distanceUnit)} ${sampleBearing}`
+      : '';
 
   // Sparkline/chart geometry setup.
   $: chartPoints = data ? data.points.map((p) => ({
@@ -164,7 +170,19 @@
     e.preventDefault();
     scrubMs = data.points[nextIdx].time.getTime();
   }
+
+  // Click-to-open "what does this distance mean?" popover. Closes on Escape or outside click.
+  let showInfo = false;
+  let infoWrap: HTMLSpanElement;
+  function onWindowClick(e: MouseEvent) {
+    if (showInfo && infoWrap && !infoWrap.contains(e.target as Node)) showInfo = false;
+  }
+  function onWindowKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') showInfo = false;
+  }
 </script>
+
+<svelte:window on:click={onWindowClick} on:keydown={onWindowKey} />
 
 <section class="card" data-testid="marine-card">
   <div class="head">
@@ -175,8 +193,34 @@
       {/if}
     </div>
     <span class="src" data-testid="marine-source"
-      >Open-Meteo{#if offshoreLabel} · <span class="offshore">{offshoreLabel}</span>{/if}</span
-    >
+      >Open-Meteo{#if sampleLabel} · <span class="sample-dist">{sampleLabel}</span><span
+          class="info-wrap"
+          bind:this={infoWrap}
+        ><button
+            type="button"
+            class="info-btn"
+            data-testid="marine-info-btn"
+            aria-label="What does this distance mean?"
+            aria-expanded={showInfo}
+            on:click={() => (showInfo = !showInfo)}>&#9432;</button
+          >{#if showInfo}
+          <div class="info-pop" role="dialog" aria-label="About this forecast location" data-testid="marine-info">
+            <p>
+              Open-Meteo's waves come from models that cover the sea in a grid of cells — each a few
+              km across and only over water. Your spot snaps to the nearest cell, so this forecast is
+              for the water <strong>{sampleLabel.replace('~', 'about ')}</strong> of where you're
+              looking, not the shoreline itself.
+            </p>
+            <a
+              href="https://github.com/vinc3m1/lunitidal#marine-forecast-waves--swell"
+              target="_blank"
+              rel="noopener"
+              on:click={() => (showInfo = false)}>How this works →</a
+            >
+          </div>
+        {/if}</span
+        >{/if}
+    </span>
   </div>
 
   {#if state === 'loading'}
@@ -270,8 +314,63 @@
     color: var(--muted);
     font-size: 0.75rem;
   }
-  .offshore {
+  .sample-dist {
     color: var(--text);
+  }
+  .info-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  .info-btn {
+    background: none;
+    border: none;
+    padding: 0 0 0 0.15rem;
+    margin: 0;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    vertical-align: baseline;
+  }
+  .info-btn:hover,
+  .info-btn[aria-expanded='true'] {
+    color: var(--text);
+  }
+  .info-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .info-pop {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 0.4rem);
+    right: 0;
+    width: min(17rem, 78vw);
+    background: var(--surface);
+    border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+    border-radius: 0.6rem;
+    padding: 0.7rem 0.8rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+    text-align: left;
+    cursor: default;
+  }
+  .info-pop p {
+    margin: 0 0 0.5rem;
+    color: var(--text);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    font-weight: 400;
+  }
+  .info-pop a {
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .info-pop a:hover {
+    text-decoration: underline;
   }
   .muted {
     margin: 0;
