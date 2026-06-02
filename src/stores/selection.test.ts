@@ -71,13 +71,15 @@ describe('selection timezone', () => {
     expect(sel.timezone).toBe('Asia/Jakarta'); // displayed in the pin’s own zone, WIB +7
   });
 
-  it('falls back to the gauge zone only when the coordinates can’t be placed', async () => {
+  it('fails fast on invalid coordinates instead of snapping to a bogus station/zone', async () => {
     const { selectPoint, selection } = await import('./selection');
     const { get } = await import('svelte/store');
 
-    // Non-finite coordinates can't resolve to a zone, so the station's is the last resort.
-    await selectPoint(NaN, NaN, 'Nowhere');
-    expect(get(selection)!.timezone).toBe('Asia/Makassar');
+    // Garbage coordinates drive the station snap and marine fetch too, so the whole selection
+    // would be wrong — reject rather than silently showing some arbitrary station's clock.
+    await expect(selectPoint(NaN, NaN, 'Nowhere')).rejects.toThrow(/invalid coordinates/i);
+    await expect(selectPoint(200, 0, 'Off the map')).rejects.toThrow(/invalid coordinates/i);
+    expect(get(selection)).toBeNull(); // nothing committed
   });
 
   it('uses the station’s own zone for a directly-picked station', async () => {

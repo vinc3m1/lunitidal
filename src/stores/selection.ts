@@ -116,6 +116,13 @@ export async function selectPoint(
   label?: string,
   timezone?: string,
 ): Promise<void> {
+  // Fail fast on bad input. These coordinates drive the station snap, the marine fetch, and the
+  // stored point — so garbage here means the whole selection is wrong, not just the timezone.
+  // (The station-zone fallback below is deliberately *not* a catch-all for this; it only covers a
+  // valid point whose zone lookup couldn't load.)
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    throw new Error(`Invalid coordinates: ${lat}, ${lon}`);
+  }
   const index = await loadIndex();
   const [near] = nearest(index, lat, lon, 1);
   if (!near) throw new Error('No tide station found nearby');

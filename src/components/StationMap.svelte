@@ -528,6 +528,10 @@
       // linger on the map (or reappear on the inline map after the overlay closes).
       proposed.set(null);
       dispatch('close');
+    } catch (e) {
+      // Surface failures (e.g. invalid coordinates, no nearby station) instead of letting them
+      // become an unhandled rejection; keep the map open so the user can pick again.
+      geoError = e instanceof Error ? e.message : String(e);
     } finally {
       busy = false;
     }
