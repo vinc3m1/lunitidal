@@ -12,7 +12,8 @@ test('first visit defaults to an IP-based location, snapped to nearest station',
 
   const bar = page.locator('header.locbar');
   await expect(bar).toContainText('Testville, Testland');
-  await expect(bar).toContainText('away'); // distance to the nearest station is shown
+  // Distance to the nearest station is shown on the tide card's closest-station label.
+  await expect(page.getByTestId('closest-station')).toContainText('away');
 });
 
 test('falls back to the seed location when IP geolocation fails', async ({ page }) => {
