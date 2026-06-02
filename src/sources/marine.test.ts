@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { parseMarine } from './marine';
+import { describe, expect, it, vi } from 'vitest';
+import { getMarine, parseMarine } from './marine';
 import { formatTime } from '../engine/time';
 
 const day = (h: number) => `2026-05-30T${String(h).padStart(2, '0')}:00`;
@@ -91,5 +91,17 @@ describe('marine parsing', () => {
     expect(pt.time.toISOString()).toBe('2026-05-30T18:00:00.000Z'); // parsed as UTC
     expect(formatTime(pt.time, 'Asia/Makassar', '24h')).toBe('02:00'); // Bali gauge, WITA +8
     expect(formatTime(pt.time, 'America/New_York', '24h')).toBe('14:00'); // a NY set location, EDT -4
+  });
+
+  it('fetches Open-Meteo in UTC, so the wave cell’s own zone never leaks into display', () => {
+    // The request must pin timezone=UTC. If it ever used timezone=auto the API would return the
+    // *grid cell's* local times, and the app could no longer choose to show the set location's zone.
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ hourly: { time: [] } }),
+    } as Response);
+    void getMarine(-8.7, 115.2, start, end);
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('timezone=UTC'));
+    mockFetch.mockRestore();
   });
 });

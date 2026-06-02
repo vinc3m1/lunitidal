@@ -104,6 +104,52 @@ test('times follow the selected place timezone, not the snapped station', async 
   await expect(note).not.toContainText(/GMT\+8|WITA/);
 });
 
+test('both the tide table and the marine card use the selected location’s zone when the gauge and wave cell are elsewhere', async ({
+  page,
+}) => {
+  // Selected place tagged India Standard Time (UTC+5:30, no DST), at Bali coordinates — so it
+  // snaps to the Benoa gauge (Asia/Makassar, +8) AND the marine mock's Bali wave cell, both in a
+  // *different* zone. The half-hour offset is the fingerprint: Open-Meteo's hourly (UTC) samples
+  // land on :30 in IST but on :00 at the +8 gauge, so a ":30" marine time proves the displayed
+  // zone follows the chosen location, not the gauge or the wave cell.
+  await page.route(/geocoding-api\.open-meteo\.com/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        results: [
+          {
+            id: 555,
+            name: 'Halfpast',
+            admin1: 'Bali',
+            country: 'Indonesia',
+            latitude: -8.77,
+            longitude: 115.22,
+            timezone: 'Asia/Kolkata',
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('map-search-input').fill('Halfpast');
+  await page.getByTestId('place-result').first().click();
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
+
+  // Tide-card note is in IST, not the gauge's GMT+8/WITA.
+  const note = page.getByTestId('tz-note');
+  await expect(note).toContainText(/IST|GMT\+5:30|GMT\+5/);
+  await expect(note).not.toContainText(/GMT\+8|WITA/);
+
+  // The marine card's time is on the half-hour — only possible if it's rendered in IST (+5:30),
+  // never at the +8 gauge / wave-cell zone.
+  const marineTime = page.getByTestId('marine-active-time');
+  await expect(marineTime).toBeVisible();
+  await expect(marineTime).toContainText(/:30/);
+});
+
 test('offline station-name search selects a station', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('change-location').click();
