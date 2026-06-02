@@ -6,14 +6,32 @@ test('“use my location” snaps to the nearest station with confidence', async
   await page.getByTestId('use-my-location').click();
   await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
   const bar = page.locator('header.locbar');
-  // The closest-station chip carries the snapped station, distance + confidence.
+  // The closest-station label now lives inside the tide card (like the marine source line),
+  // not in the location bar header.
   const chip = page.getByTestId('closest-station');
   await expect(chip).toContainText('Closest station');
   await expect(chip).toContainText('away');
   await expect(chip).toContainText(/good match|approximate|rough estimate|nearest available/);
+  await expect(bar.getByTestId('closest-station')).toHaveCount(0);
   // The title is the reverse-geocoded place, never a stale "my location".
   await expect(bar).not.toContainText(/my location/i);
   await expect(page.locator('header.locbar .name')).toContainText('Denpasar');
+});
+
+test('the closest-station ⓘ explains why tides come from the nearest station', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('use-my-location').click();
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
+
+  const info = page.getByTestId('station-info');
+  await expect(info).toHaveCount(0); // closed by default
+  await page.getByTestId('station-info-btn').click();
+  await expect(info).toBeVisible();
+  await expect(info).toContainText(/coastline|coast|bays|station/i);
+  // Escape closes it again.
+  await page.keyboard.press('Escape');
+  await expect(info).toHaveCount(0);
 });
 
 test('offline station-name search selects a station', async ({ page }) => {

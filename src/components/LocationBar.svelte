@@ -1,20 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { DistanceUnit } from '../engine/types';
-  import { confidenceForKm } from '../engine/confidence';
-  import { formatDistance } from '../engine/units';
 
   const dispatch = createEventDispatcher<{ change: void; togglefav: void }>();
 
   export let name: string;
-  /** Distance from the chosen point to this station (km), or null if exact. */
-  export let km: number | null = null;
-  export let distanceUnit: DistanceUnit;
   export let isFav = false;
-  /** Underlying tide station; shown in the meta when the label isn't the station itself. */
-  export let stationName = '';
-
-  $: conf = km !== null ? confidenceForKm(km) : null;
 </script>
 
 <header class="locbar">
@@ -48,17 +38,6 @@
     </button>
     </div>
   </div>
-
-  {#if km !== null && conf}
-    <div class="station-chip" data-testid="closest-station">
-      <span class="anchor" aria-hidden="true">⚓</span>
-      <span class="chip-text">
-        <span class="chip-label">Closest station:</span>
-        <span class="chip-station">{stationName}</span>
-        <span class="chip-sep">·</span>{formatDistance(km, distanceUnit)} away<span class="chip-sep">·</span><span class={`conf ${conf.level}`}>{conf.label}</span>
-      </span>
-    </div>
-  {/if}
 </header>
 
 <style>
@@ -79,47 +58,6 @@
   .name {
     font-size: 1.15rem;
     font-weight: 700;
-  }
-  .station-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    align-self: flex-start;
-    max-width: 100%;
-    padding: 0.3rem 0.6rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-    color: var(--text);
-    font-size: 0.82rem;
-    line-height: 1.25;
-  }
-  .station-chip .anchor {
-    font-size: 0.9rem;
-    flex: none;
-  }
-  .chip-text {
-    min-width: 0;
-  }
-  .chip-label {
-    color: var(--muted);
-  }
-  .chip-station {
-    font-weight: 700;
-  }
-  .chip-sep {
-    margin: 0 0.35rem;
-    color: var(--muted);
-  }
-  .conf.good {
-    color: var(--accent);
-  }
-  .conf.fair {
-    color: var(--text);
-  }
-  .conf.rough,
-  .conf.far {
-    color: var(--falling);
   }
   .actions {
     display: flex;

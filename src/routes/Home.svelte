@@ -11,6 +11,7 @@
   import Readout from '../components/Readout.svelte';
   import ExtremesTable from '../components/ExtremesTable.svelte';
   import LocationBar from '../components/LocationBar.svelte';
+  import StationSource from '../components/StationSource.svelte';
   import MarineCard from '../components/MarineCard.svelte';
   import { REPO_URL } from '../lib/links';
 
@@ -151,9 +152,6 @@
 {:else}
   <LocationBar
     name={$selection.label}
-    stationName={$selection.station.name}
-    km={$selection.km}
-    distanceUnit={$settings.distanceUnit}
     {isFav}
     on:change={changeLocation}
     on:togglefav={onToggleFav}
@@ -162,6 +160,15 @@
   <div class="home-grid">
     <div class="main-column">
       <section class="card">
+        {#if $selection.km !== null}
+          <div class="tide-source">
+            <StationSource
+              stationName={$selection.station.name}
+              km={$selection.km}
+              distanceUnit={$settings.distanceUnit}
+            />
+          </div>
+        {/if}
         <Readout
           {scrubDate}
           {scrubLevel}
