@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * Integration coverage for the timezone the UI actually displays times in. Tides are
- * predicted from the *nearest gauge*, but times are shown in the *set location's* zone — the
- * two can differ when the snapped station sits across a timezone line. These tests pin that
- * wiring (override, fallback, persistence) without touching the real station database/network.
+ * Integration coverage for the timezone the UI actually displays times in. Tides are predicted
+ * from the *nearest gauge*, but times are shown in the *set location's* zone — the two differ when
+ * the snapped station sits across a timezone line. These tests pin that wiring (override, offline
+ * coordinate lookup, last-resort fallback, persistence) without touching the real database/network.
  */
 
-// The snapped gauge is always in Bali (WITA / +8) regardless of where the point is.
+// The snapped gauge is always in Bali (WITA / +8) regardless of where the chosen point is.
 const BALI_GAUGE = {
   id: 'sta-bali',
   name: 'Benoa',
@@ -23,6 +23,8 @@ vi.mock('../engine/stations', () => ({
   loadStation: vi.fn(async () => BALI_GAUGE),
   loadSeedStation: vi.fn(async () => BALI_GAUGE),
 }));
+// Coordinate → zone lookup is mocked so each test controls what the point's own zone resolves to.
+vi.mock('../engine/timezone', () => ({ timezoneAt: vi.fn(async () => null) }));
 vi.mock('../sources/reverse', () => ({ reverseGeocode: vi.fn(async () => null) }));
 vi.mock('../sources/ipgeo', () => ({ getIpLocation: vi.fn() }));
 
@@ -42,23 +44,41 @@ beforeEach(() => {
 });
 
 describe('selection timezone', () => {
-  it('displays times in the set location’s zone, overriding the gauge’s zone', async () => {
+  it('uses the zone handed in by a place search, without a coordinate lookup', async () => {
     const { selectPoint, selection } = await import('./selection');
+    const { timezoneAt } = await import('../engine/timezone');
     const { get } = await import('svelte/store');
 
-    // A New York point that still snaps to the Bali gauge (contrived to force divergence).
     await selectPoint(40.71, -74.0, 'New York, NY', 'America/New_York');
 
     const sel = get(selection)!;
     expect(sel.station.timezone).toBe('Asia/Makassar'); // tides come from the Bali gauge…
-    expect(sel.timezone).toBe('America/New_York'); // …but times are shown in the chosen zone
+    expect(sel.timezone).toBe('America/New_York'); // …but times follow the searched place
+    expect(timezoneAt).not.toHaveBeenCalled(); // search already carried the zone
   });
 
-  it('falls back to the gauge’s zone when the point has no known zone', async () => {
+  it('resolves a dropped pin’s own zone from its coordinates (offline), not the gauge’s', async () => {
     const { selectPoint, selection } = await import('./selection');
+    const { timezoneAt } = await import('../engine/timezone');
     const { get } = await import('svelte/store');
 
-    await selectPoint(-8.7, 115.2, 'Sanur'); // no timezone arg (e.g. dropped pin / geolocation)
+    // A pin (no zone passed) whose coordinates resolve to a zone different from the Bali gauge.
+    vi.mocked(timezoneAt).mockResolvedValue('Asia/Jayapura'); // WIT, +9
+    await selectPoint(-2.5, 140.7, 'Jayapura');
+
+    expect(timezoneAt).toHaveBeenCalledWith(-2.5, 140.7);
+    const sel = get(selection)!;
+    expect(sel.station.timezone).toBe('Asia/Makassar'); // gauge zone
+    expect(sel.timezone).toBe('Asia/Jayapura'); // displayed in the pin’s own zone
+  });
+
+  it('falls back to the gauge zone only when the coordinate lookup can’t place the point', async () => {
+    const { selectPoint, selection } = await import('./selection');
+    const { timezoneAt } = await import('../engine/timezone');
+    const { get } = await import('svelte/store');
+
+    vi.mocked(timezoneAt).mockResolvedValue(null); // lookup couldn’t resolve (e.g. bad coords)
+    await selectPoint(-8.7, 115.2, 'Sanur');
     expect(get(selection)!.timezone).toBe('Asia/Makassar');
   });
 

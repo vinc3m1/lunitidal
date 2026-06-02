@@ -1,5 +1,6 @@
 import { get, writable } from 'svelte/store';
 import { loadIndex, loadSeedStation, loadStation, nearest } from '../engine/stations';
+import { timezoneAt } from '../engine/timezone';
 import type { Station } from '../engine/types';
 import { getIpLocation } from '../sources/ipgeo';
 import { reverseGeocode } from '../sources/reverse';
@@ -118,18 +119,22 @@ export async function selectPoint(
   const index = await loadIndex();
   const [near] = nearest(index, lat, lon, 1);
   if (!near) throw new Error('No tide station found nearby');
-  const [station, resolved] = await Promise.all([
+  const [station, resolved, lookedUpTz] = await Promise.all([
     loadStation(near.station.id),
     label ? Promise.resolve(label) : reverseGeocode(lat, lon),
+    // Searches already carry the place's zone; for raw pins / geolocation, resolve it from the
+    // coordinates (offline) rather than guessing. Skip the lookup when we were handed a zone.
+    timezone ? Promise.resolve<string | null>(null) : timezoneAt(lat, lon),
   ]);
-  // Prefer the chosen location's own timezone (e.g. from the geocoder) so times follow the
-  // place even when the nearest gauge sits in another zone; fall back to the station's.
+  // Display in the chosen location's own zone so times follow the place even when the nearest
+  // gauge sits across a timezone line; only fall back to the station's zone as a last resort
+  // (e.g. an out-of-range coordinate the lookup can't place).
   commit({
     station,
     label: resolved || station.name,
     km: near.km,
     point: { lat, lon },
-    timezone: timezone || station.timezone,
+    timezone: timezone || lookedUpTz || station.timezone,
   });
 }
 
@@ -155,7 +160,7 @@ export async function selectFavorite(fav: Favorite): Promise<void> {
         label: fav.label,
         km: null,
         point: { lat: fav.lat, lon: fav.lon },
-        timezone: fav.timezone ?? station.timezone,
+        timezone: fav.timezone ?? (await timezoneAt(fav.lat, fav.lon)) ?? station.timezone,
       });
       return;
     } catch {
