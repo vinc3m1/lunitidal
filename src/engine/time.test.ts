@@ -26,6 +26,22 @@ describe('time', () => {
     expect(formatTime(midnightWita, 'Asia/Makassar', '12h')).toBe('12:00 AM');
   });
 
+  it('renders one absolute instant in the set-location zone, not the gauge zone (no off-by-one hour)', () => {
+    // A single UTC tide instant is shown in whatever zone the *set location* uses; when that
+    // differs from the snapped gauge the wall-clock differs by exactly the zones' offset — the
+    // instant itself never moves. (Guards against the table silently drifting an hour.)
+    const lowTide = new Date('2026-06-01T20:32:00Z'); // a Benoa low-tide-like instant
+    expect(formatTime(lowTide, 'Asia/Makassar', '24h')).toBe('04:32'); // Bali gauge, WITA +8
+    expect(formatTime(lowTide, 'America/New_York', '24h')).toBe('16:32'); // a NY set location, EDT -4
+  });
+
+  it('applies DST when displaying, so summer/winter differ by exactly one hour', () => {
+    const summer = new Date('2026-07-01T12:00:00Z');
+    const winter = new Date('2026-01-01T12:00:00Z');
+    expect(formatTime(summer, 'America/New_York', '24h')).toBe('08:00'); // EDT, -4
+    expect(formatTime(winter, 'America/New_York', '24h')).toBe('07:00'); // EST, -5
+  });
+
   it('gives a short timezone label', () => {
     expect(tzAbbrev(new Date('2026-05-30T00:00:00Z'), 'Asia/Makassar')).toMatch(/GMT\+8|WITA/);
     expect(tzAbbrev(new Date('2026-07-01T12:00:00Z'), 'America/New_York')).toMatch(/EDT|GMT-4/);
