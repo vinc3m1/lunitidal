@@ -14,6 +14,12 @@ export interface Selection {
   km: number | null;
   /** The chosen point (station coords when picked directly). */
   point: { lat: number; lon: number };
+  /**
+   * IANA timezone to display times in. This follows the *chosen location* (e.g. from the
+   * geocoder), not the snapped station — they can differ when the nearest gauge sits across
+   * a timezone line. Falls back to the station's timezone when the point's zone is unknown.
+   */
+  timezone: string;
 }
 
 export const selection = writable<Selection | null>(null);
@@ -25,6 +31,8 @@ interface LastLocation {
   km: number | null;
   lat: number;
   lon: number;
+  /** Optional for back-compat: older saves predate per-location timezones. */
+  timezone?: string;
 }
 const lastLocation = persisted<LastLocation | null>('lunitidal:lastLocation', null);
 
@@ -36,6 +44,7 @@ function commit(sel: Selection): void {
     km: sel.km,
     lat: sel.point.lat,
     lon: sel.point.lon,
+    timezone: sel.timezone,
   });
 }
 
@@ -49,7 +58,13 @@ export async function initSelection(): Promise<void> {
         const station = await loadStation(last.stationId);
         // Heal legacy "My location"-style labels saved before the labelling fix.
         const label = isLegacyLabel(last.label) ? station.name : last.label;
-        const sel = { station, label, km: last.km, point: { lat: last.lat, lon: last.lon } };
+        const sel = {
+          station,
+          label,
+          km: last.km,
+          point: { lat: last.lat, lon: last.lon },
+          timezone: last.timezone ?? station.timezone,
+        };
         selection.set(sel);
         if (label !== last.label) commit(sel);
         selectionStatus.set('ready');
@@ -77,6 +92,7 @@ export async function initSelection(): Promise<void> {
       label: station.name,
       km: null,
       point: { lat: station.latitude, lon: station.longitude },
+      timezone: station.timezone,
     });
     selectionStatus.set('ready');
   } catch {
@@ -93,7 +109,12 @@ export async function initSelection(): Promise<void> {
  * lookup runs concurrently with the station load and is best-effort: offline or on failure
  * it returns null and we fall back to the station name (the previous behaviour).
  */
-export async function selectPoint(lat: number, lon: number, label?: string): Promise<void> {
+export async function selectPoint(
+  lat: number,
+  lon: number,
+  label?: string,
+  timezone?: string,
+): Promise<void> {
   const index = await loadIndex();
   const [near] = nearest(index, lat, lon, 1);
   if (!near) throw new Error('No tide station found nearby');
@@ -101,7 +122,15 @@ export async function selectPoint(lat: number, lon: number, label?: string): Pro
     loadStation(near.station.id),
     label ? Promise.resolve(label) : reverseGeocode(lat, lon),
   ]);
-  commit({ station, label: resolved || station.name, km: near.km, point: { lat, lon } });
+  // Prefer the chosen location's own timezone (e.g. from the geocoder) so times follow the
+  // place even when the nearest gauge sits in another zone; fall back to the station's.
+  commit({
+    station,
+    label: resolved || station.name,
+    km: near.km,
+    point: { lat, lon },
+    timezone: timezone || station.timezone,
+  });
 }
 
 /** Pick a station directly (offline station search). */
@@ -112,6 +141,7 @@ export async function selectStationId(id: string, label: string): Promise<void> 
     label,
     km: null,
     point: { lat: station.latitude, lon: station.longitude },
+    timezone: station.timezone,
   });
 }
 
@@ -120,11 +150,22 @@ export async function selectFavorite(fav: Favorite): Promise<void> {
   if (fav.id) {
     try {
       const station = await loadStation(fav.id);
-      commit({ station, label: fav.label, km: null, point: { lat: fav.lat, lon: fav.lon } });
+      commit({
+        station,
+        label: fav.label,
+        km: null,
+        point: { lat: fav.lat, lon: fav.lon },
+        timezone: fav.timezone ?? station.timezone,
+      });
       return;
     } catch {
       /* saved station unavailable — re-snap from the point */
     }
   }
-  await selectPoint(fav.lat, fav.lon, isLegacyLabel(fav.label) ? undefined : fav.label);
+  await selectPoint(
+    fav.lat,
+    fav.lon,
+    isLegacyLabel(fav.label) ? undefined : fav.label,
+    fav.timezone,
+  );
 }

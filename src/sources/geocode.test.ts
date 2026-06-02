@@ -13,6 +13,23 @@ describe('geocode parsing', () => {
     ]);
   });
 
+  it('carries through the IANA timezone when present', () => {
+    const [out] = parseGeoResults({
+      results: [
+        {
+          id: 1,
+          name: 'Uluwatu',
+          admin1: 'Bali',
+          country: 'Indonesia',
+          latitude: -8.8,
+          longitude: 115.1,
+          timezone: 'Asia/Makassar',
+        },
+      ],
+    });
+    expect(out.timezone).toBe('Asia/Makassar');
+  });
+
   it('returns [] for missing/empty/invalid payloads', () => {
     expect(parseGeoResults({})).toEqual([]);
     expect(parseGeoResults(null)).toEqual([]);

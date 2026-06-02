@@ -34,6 +34,76 @@ test('the closest-station ⓘ explains why tides come from the nearest station',
   await expect(info).toHaveCount(0);
 });
 
+test('the closest-station ⓘ popover stays within the viewport on mobile (no horizontal overflow)', async ({
+  page,
+}) => {
+  // Regression: the popover used to be anchored to the inline ⓘ button with `left: 0`, so on a
+  // narrow screen it shot off the right edge — pushing the whole page's horizontal width out and
+  // adding a horizontal scrollbar. (Default test viewport is 390px wide — mobile.)
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('use-my-location').click();
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
+  await page.getByTestId('closest-station').waitFor();
+
+  const overflowOf = () =>
+    page.evaluate(() => {
+      const el = document.documentElement;
+      return el.scrollWidth - el.clientWidth;
+    });
+
+  const before = await overflowOf();
+
+  await page.getByTestId('station-info-btn').click();
+  const info = page.getByTestId('station-info');
+  await expect(info).toBeVisible();
+
+  // The popover sits fully inside the viewport, left and right.
+  const box = (await info.boundingBox())!;
+  const vw = page.viewportSize()!.width;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(vw + 1);
+
+  // …and opening it doesn't add horizontal page scroll.
+  const after = await overflowOf();
+  expect(after).toBeLessThanOrEqual(before + 1);
+});
+
+test('times follow the selected place timezone, not the snapped station', async ({ page }) => {
+  // A place at Bali coordinates but tagged with a far-away timezone, to prove the displayed
+  // times track the chosen location and not the nearest gauge (Benoa = Asia/Makassar, GMT+8).
+  await page.route(/geocoding-api\.open-meteo\.com/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        results: [
+          {
+            id: 4242,
+            name: 'Zoneville',
+            admin1: 'Bali',
+            country: 'Indonesia',
+            latitude: -8.77,
+            longitude: 115.22,
+            timezone: 'America/New_York',
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('change-location').click();
+  await page.getByTestId('map-search-input').fill('Zoneville');
+  await page.getByTestId('place-result').first().click();
+  await page.getByTestId('search-results-dropdown').waitFor({ state: 'detached' });
+
+  // The tide-card timezone note shows the place's Eastern zone, never Bali's GMT+8/WITA.
+  const note = page.getByTestId('tz-note');
+  await expect(note).toContainText(/EST|EDT|GMT-[45]/);
+  await expect(note).not.toContainText(/GMT\+8|WITA/);
+});
+
 test('offline station-name search selects a station', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('change-location').click();

@@ -79,7 +79,9 @@
     }
   }
 
-  $: tz = station?.timezone ?? 'UTC';
+  // Display in the selected location's timezone, which can differ from the snapped station's
+  // when the nearest gauge sits across a timezone line.
+  $: tz = $selection?.timezone ?? station?.timezone ?? 'UTC';
   $: dayStart = station ? addDays(startOfDayInTz(now, tz), dayOffset) : now;
   $: dayEnd = addDays(dayStart, 1);
   $: offset = station ? datumOffset(station, $settings.datum ?? undefined) : 0;
@@ -111,6 +113,7 @@
       label: $selection.station.name,
       lat: $selection.station.latitude,
       lon: $selection.station.longitude,
+      timezone: $selection.timezone,
     });
   }
 
@@ -278,7 +281,7 @@
         </div>
         <ExtremesTable {extremes} {tz} heightUnit={$settings.heightUnit} timeFormat={$settings.timeFormat} />
         <p class="datum">Heights above {datumName} · {$selection.station.source?.name ?? 'tide model'}</p>
-        <p class="datum">Times shown in {tzLabel} — the station’s local time</p>
+        <p class="datum" data-testid="tz-note">Times shown in {tzLabel} — the selected location’s local time</p>
       </section>
     </aside>
   </div>

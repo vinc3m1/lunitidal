@@ -148,7 +148,7 @@
     if (map) {
       map.easeTo({ center: [p.lon, p.lat], zoom: 12, offset: mode === 'inline' ? [0, 35] : [0, 60], duration: 450 });
     }
-    void run(() => selectPoint(p.lat, p.lon, geoLabel(p)));
+    void run(() => selectPoint(p.lat, p.lon, geoLabel(p), p.timezone));
     query = '';
     isFocused = false;
   }
