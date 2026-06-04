@@ -82,6 +82,44 @@ describe('selection timezone', () => {
     expect(get(selection)).toBeNull(); // nothing committed
   });
 
+  it('ignores a corrupt persisted location and self-heals to the default (cache miss)', async () => {
+    // A stale lastLocation with garbage coordinates must not be restored as-is.
+    localStorage.setItem(
+      'lunitidal:lastLocation',
+      JSON.stringify({
+        stationId: 'sta-bali',
+        label: 'Stale',
+        km: 3,
+        lat: null,
+        lon: null,
+        timezone: 'America/New_York',
+      }),
+    );
+    const { initSelection, selection } = await import('./selection');
+    const { get } = await import('svelte/store');
+
+    await initSelection();
+
+    const sel = get(selection)!;
+    // Fell through to the seed station instead of restoring the broken point/zone.
+    expect(sel.point).toEqual({ lat: -8.74, lon: 115.21 });
+    expect(sel.timezone).toBe('Asia/Makassar');
+    expect(sel.label).toBe('Benoa');
+  });
+
+  it('salvages a favorite’s station coordinates when its stored point is corrupt', async () => {
+    const { selectFavorite, selection } = await import('./selection');
+    const { get } = await import('svelte/store');
+
+    // Favorite is user data anchored to a real station — keep it, just fix the bad point.
+    await selectFavorite({ id: 'sta-bali', label: 'Saved spot', lat: NaN, lon: NaN });
+
+    const sel = get(selection)!;
+    expect(sel.point).toEqual({ lat: -8.74, lon: 115.21 }); // station coords, not NaN
+    expect(sel.timezone).toBe('Asia/Makassar');
+    expect(sel.label).toBe('Saved spot'); // saved label preserved
+  });
+
   it('uses the station’s own zone for a directly-picked station', async () => {
     const { selectStationId, selection } = await import('./selection');
     const { get } = await import('svelte/store');

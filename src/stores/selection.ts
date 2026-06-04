@@ -37,6 +37,11 @@ interface LastLocation {
 }
 const lastLocation = persisted<LastLocation | null>('lunitidal:lastLocation', null);
 
+/** Coordinates are sane enough to drive station snapping, fetches, and a zone lookup. */
+function validCoords(lat: number, lon: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
 function commit(sel: Selection): void {
   selection.set(sel);
   lastLocation.set({
@@ -54,7 +59,10 @@ export async function initSelection(): Promise<void> {
   selectionStatus.set('loading');
   const last = get(lastLocation);
   try {
-    if (last) {
+    // `lastLocation` is just a cache of where you were. If its coordinates came back corrupt
+    // (a bad/partial write, an old schema), treat it as a miss and self-heal to the default
+    // below rather than restoring a broken point.
+    if (last && validCoords(last.lat, last.lon)) {
       try {
         const station = await loadStation(last.stationId);
         // Heal legacy "My location"-style labels saved before the labelling fix.
@@ -120,7 +128,7 @@ export async function selectPoint(
   // stored point — so garbage here means the whole selection is wrong, not just the timezone.
   // (The station-zone fallback below is deliberately *not* a catch-all for this; it only covers a
   // valid point whose zone lookup couldn't load.)
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+  if (!validCoords(lat, lon)) {
     throw new Error(`Invalid coordinates: ${lat}, ${lon}`);
   }
   const index = await loadIndex();
@@ -162,12 +170,18 @@ export async function selectFavorite(fav: Favorite): Promise<void> {
   if (fav.id) {
     try {
       const station = await loadStation(fav.id);
+      // A favorite is user data anchored to a real station — not a throwaway cache. If its stored
+      // point is corrupt, salvage the station's own coordinates instead of discarding the saved
+      // place (the bad point would otherwise break the marine fetch and map centering too).
+      const [lat, lon] = validCoords(fav.lat, fav.lon)
+        ? [fav.lat, fav.lon]
+        : [station.latitude, station.longitude];
       commit({
         station,
         label: fav.label,
         km: null,
-        point: { lat: fav.lat, lon: fav.lon },
-        timezone: fav.timezone ?? (await timezoneAt(fav.lat, fav.lon)) ?? station.timezone,
+        point: { lat, lon },
+        timezone: fav.timezone ?? (await timezoneAt(lat, lon)) ?? station.timezone,
       });
       return;
     } catch {
