@@ -10,6 +10,9 @@ export interface GeoResult {
   country?: string;
   lat: number;
   lon: number;
+  /** IANA timezone of the place (e.g. "Asia/Makassar"). Used so times follow the
+   *  chosen location, not the snapped tide station, when the two differ. */
+  timezone?: string;
 }
 
 /** Pure mapping of the Open-Meteo geocoding response → our shape. Unit-tested. */
@@ -23,6 +26,7 @@ export function parseGeoResults(data: unknown): GeoResult[] {
     country: r.country as string | undefined,
     lat: r.latitude as number,
     lon: r.longitude as number,
+    timezone: r.timezone as string | undefined,
   }));
 }
 

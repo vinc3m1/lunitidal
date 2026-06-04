@@ -8,6 +8,8 @@ export interface Favorite {
   label: string; // station.name
   lat: number;
   lon: number;
+  /** Display timezone of the saved location (optional for back-compat with older saves). */
+  timezone?: string;
 }
 
 export const favorites = persisted<Favorite[]>('lunitidal:favorites', []);
@@ -50,6 +52,7 @@ export function healFavoriteLabels(list: any[], index: IndexEntry[]): Favorite[]
           label: f.label,
           lat: f.lat,
           lon: f.lon,
+          timezone: f.timezone,
         });
       }
     } else {
@@ -63,6 +66,7 @@ export function healFavoriteLabels(list: any[], index: IndexEntry[]): Favorite[]
             label: isLegacyLabel(f.label) ? near.station.name : f.label,
             lat: near.station.lat,
             lon: near.station.lon,
+            timezone: f.timezone,
           });
         }
       } else {
@@ -73,6 +77,7 @@ export function healFavoriteLabels(list: any[], index: IndexEntry[]): Favorite[]
             label: f.label,
             lat: f.lat,
             lon: f.lon,
+            timezone: f.timezone,
           });
         }
       }

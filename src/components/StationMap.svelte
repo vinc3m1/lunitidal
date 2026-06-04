@@ -148,7 +148,7 @@
     if (map) {
       map.easeTo({ center: [p.lon, p.lat], zoom: 12, offset: mode === 'inline' ? [0, 35] : [0, 60], duration: 450 });
     }
-    void run(() => selectPoint(p.lat, p.lon, geoLabel(p)));
+    void run(() => selectPoint(p.lat, p.lon, geoLabel(p), p.timezone));
     query = '';
     isFocused = false;
   }
@@ -528,6 +528,10 @@
       // linger on the map (or reappear on the inline map after the overlay closes).
       proposed.set(null);
       dispatch('close');
+    } catch (e) {
+      // Surface failures (e.g. invalid coordinates, no nearby station) instead of letting them
+      // become an unhandled rejection; keep the map open so the user can pick again.
+      geoError = e instanceof Error ? e.message : String(e);
     } finally {
       busy = false;
     }

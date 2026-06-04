@@ -19,8 +19,13 @@ apparent from there or the code.
   crashed `favorites` (`.some is not a function`) on reload. Keep arrays as arrays.
 
 - **Timezone:** pass real `Date` instants (absolute UTC) to the predictor — never
-  local-wall-clock Dates. Convert to the station's IANA timezone only for *display*
-  (`src/engine/time.ts`). Each station carries its own `timezone`.
+  local-wall-clock Dates. Convert to an IANA timezone only for *display* (`src/engine/time.ts`).
+  The display zone is the **selected location's**, not the snapped gauge's — they differ when the
+  nearest station sits across a timezone line. It's resolved on `Selection.timezone`: the
+  place-search geocoder already returns a zone; dropped pins / "use my location" resolve it from
+  coordinates via `timezoneAt()` (`src/engine/timezone.ts`, backed by the offline `tz-lookup` lib,
+  lazy-loaded). The station's own `timezone` is only the last-resort fallback. Open-Meteo (marine)
+  is always fetched with `timezone=UTC` so the wave cell's zone never leaks into display.
 
 - **Datum:** build the predictor with `offset: 0` (heights are MSL-relative) and apply the
   chart-datum offset in the display layer (`src/engine/datum.ts`). Don't bake datum into the

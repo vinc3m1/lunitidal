@@ -1,5 +1,6 @@
 import { get, writable } from 'svelte/store';
 import { loadIndex, loadSeedStation, loadStation, nearest } from '../engine/stations';
+import { timezoneAt } from '../engine/timezone';
 import type { Station } from '../engine/types';
 import { getIpLocation } from '../sources/ipgeo';
 import { reverseGeocode } from '../sources/reverse';
@@ -14,6 +15,12 @@ export interface Selection {
   km: number | null;
   /** The chosen point (station coords when picked directly). */
   point: { lat: number; lon: number };
+  /**
+   * IANA timezone to display times in. This follows the *chosen location* (e.g. from the
+   * geocoder), not the snapped station — they can differ when the nearest gauge sits across
+   * a timezone line. Falls back to the station's timezone when the point's zone is unknown.
+   */
+  timezone: string;
 }
 
 export const selection = writable<Selection | null>(null);
@@ -25,8 +32,15 @@ interface LastLocation {
   km: number | null;
   lat: number;
   lon: number;
+  /** Optional for back-compat: older saves predate per-location timezones. */
+  timezone?: string;
 }
 const lastLocation = persisted<LastLocation | null>('lunitidal:lastLocation', null);
+
+/** Coordinates are sane enough to drive station snapping, fetches, and a zone lookup. */
+function validCoords(lat: number, lon: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
 
 function commit(sel: Selection): void {
   selection.set(sel);
@@ -36,6 +50,7 @@ function commit(sel: Selection): void {
     km: sel.km,
     lat: sel.point.lat,
     lon: sel.point.lon,
+    timezone: sel.timezone,
   });
 }
 
@@ -44,12 +59,21 @@ export async function initSelection(): Promise<void> {
   selectionStatus.set('loading');
   const last = get(lastLocation);
   try {
-    if (last) {
+    // `lastLocation` is just a cache of where you were. If its coordinates came back corrupt
+    // (a bad/partial write, an old schema), treat it as a miss and self-heal to the default
+    // below rather than restoring a broken point.
+    if (last && validCoords(last.lat, last.lon)) {
       try {
         const station = await loadStation(last.stationId);
         // Heal legacy "My location"-style labels saved before the labelling fix.
         const label = isLegacyLabel(last.label) ? station.name : last.label;
-        const sel = { station, label, km: last.km, point: { lat: last.lat, lon: last.lon } };
+        const sel = {
+          station,
+          label,
+          km: last.km,
+          point: { lat: last.lat, lon: last.lon },
+          timezone: last.timezone ?? station.timezone,
+        };
         selection.set(sel);
         if (label !== last.label) commit(sel);
         selectionStatus.set('ready');
@@ -77,6 +101,7 @@ export async function initSelection(): Promise<void> {
       label: station.name,
       km: null,
       point: { lat: station.latitude, lon: station.longitude },
+      timezone: station.timezone,
     });
     selectionStatus.set('ready');
   } catch {
@@ -93,15 +118,39 @@ export async function initSelection(): Promise<void> {
  * lookup runs concurrently with the station load and is best-effort: offline or on failure
  * it returns null and we fall back to the station name (the previous behaviour).
  */
-export async function selectPoint(lat: number, lon: number, label?: string): Promise<void> {
+export async function selectPoint(
+  lat: number,
+  lon: number,
+  label?: string,
+  timezone?: string,
+): Promise<void> {
+  // Fail fast on bad input. These coordinates drive the station snap, the marine fetch, and the
+  // stored point — so garbage here means the whole selection is wrong, not just the timezone.
+  // (The station-zone fallback below is deliberately *not* a catch-all for this; it only covers a
+  // valid point whose zone lookup couldn't load.)
+  if (!validCoords(lat, lon)) {
+    throw new Error(`Invalid coordinates: ${lat}, ${lon}`);
+  }
   const index = await loadIndex();
   const [near] = nearest(index, lat, lon, 1);
   if (!near) throw new Error('No tide station found nearby');
-  const [station, resolved] = await Promise.all([
+  const [station, resolved, lookedUpTz] = await Promise.all([
     loadStation(near.station.id),
     label ? Promise.resolve(label) : reverseGeocode(lat, lon),
+    // Searches already carry the place's zone; for raw pins / geolocation, resolve it from the
+    // coordinates (offline) rather than guessing. Skip the lookup when we were handed a zone.
+    timezone ? Promise.resolve<string | null>(null) : timezoneAt(lat, lon),
   ]);
-  commit({ station, label: resolved || station.name, km: near.km, point: { lat, lon } });
+  // Display in the chosen location's own zone so times follow the place even when the nearest
+  // gauge sits across a timezone line; only fall back to the station's zone as a last resort
+  // (e.g. an out-of-range coordinate the lookup can't place).
+  commit({
+    station,
+    label: resolved || station.name,
+    km: near.km,
+    point: { lat, lon },
+    timezone: timezone || lookedUpTz || station.timezone,
+  });
 }
 
 /** Pick a station directly (offline station search). */
@@ -112,6 +161,7 @@ export async function selectStationId(id: string, label: string): Promise<void> 
     label,
     km: null,
     point: { lat: station.latitude, lon: station.longitude },
+    timezone: station.timezone,
   });
 }
 
@@ -120,11 +170,28 @@ export async function selectFavorite(fav: Favorite): Promise<void> {
   if (fav.id) {
     try {
       const station = await loadStation(fav.id);
-      commit({ station, label: fav.label, km: null, point: { lat: fav.lat, lon: fav.lon } });
+      // A favorite is user data anchored to a real station — not a throwaway cache. If its stored
+      // point is corrupt, salvage the station's own coordinates instead of discarding the saved
+      // place (the bad point would otherwise break the marine fetch and map centering too).
+      const [lat, lon] = validCoords(fav.lat, fav.lon)
+        ? [fav.lat, fav.lon]
+        : [station.latitude, station.longitude];
+      commit({
+        station,
+        label: fav.label,
+        km: null,
+        point: { lat, lon },
+        timezone: fav.timezone ?? (await timezoneAt(lat, lon)) ?? station.timezone,
+      });
       return;
     } catch {
       /* saved station unavailable — re-snap from the point */
     }
   }
-  await selectPoint(fav.lat, fav.lon, isLegacyLabel(fav.label) ? undefined : fav.label);
+  await selectPoint(
+    fav.lat,
+    fav.lon,
+    isLegacyLabel(fav.label) ? undefined : fav.label,
+    fav.timezone,
+  );
 }

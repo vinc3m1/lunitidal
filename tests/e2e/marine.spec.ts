@@ -46,20 +46,26 @@ test.describe('Marine Card Interactive Sync and Drag', () => {
 
   test('scrubbing/dragging the tide chart updates and syncs the marine card selected point', async ({ page }) => {
     const activeTime = page.getByTestId('marine-active-time');
-    const initialTimeText = (await activeTime.innerText()).trim();
 
     const tideBox = await page.locator('svg[role="slider"]').first().boundingBox();
     if (!tideBox) throw new Error('No tide chart bounding box');
 
-    // Drag the tide chart from 20% to 80% width
-    await page.mouse.move(tideBox.x + tideBox.width * 0.2, tideBox.y + tideBox.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(tideBox.x + tideBox.width * 0.8, tideBox.y + tideBox.height / 2, { steps: 10 });
-    await page.mouse.up();
+    // Scrub the tide chart to two fixed, far-apart positions and compare the marine readout at
+    // each. Comparing two *controlled* positions — rather than "now" vs one position — keeps this
+    // independent of the wall-clock time the suite runs at. (Previously, when the run landed near
+    // the drag target's hour, the readout matched "now" and the test flaked.)
+    const scrubTideTo = async (frac: number) => {
+      await page.mouse.move(tideBox.x + tideBox.width * frac, tideBox.y + tideBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.up();
+    };
 
-    // Verify that the active time readout on the marine card updated to a new snapped time
-    const newTimeText = (await activeTime.innerText()).trim();
-    expect(newTimeText).not.toBe(initialTimeText);
+    await scrubTideTo(0.2);
+    const earlyTime = (await activeTime.innerText()).trim();
+    await scrubTideTo(0.8);
+
+    // The marine active-time tracks the tide scrub to a different snapped hour.
+    await expect(activeTime).not.toHaveText(earlyTime);
   });
 
   test('scrubbing/dragging the marine chart snaps to hour and syncs the tide chart', async ({ page }) => {

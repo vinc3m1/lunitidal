@@ -78,7 +78,7 @@
   }
 
   const pickPlace = (p: GeoResult) =>
-    withBusy(`place-${p.id}`, () => selectPoint(p.lat, p.lon, geoLabel(p)));
+    withBusy(`place-${p.id}`, () => selectPoint(p.lat, p.lon, geoLabel(p), p.timezone));
   const pickStation = (s: IndexEntry) => withBusy(`st-${s.id}`, () => selectStationId(s.id, s.name));
   const pickFavorite = (f: Favorite) => withBusy('fav', () => selectFavorite(f));
 </script>
