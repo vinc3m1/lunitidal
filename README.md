@@ -67,6 +67,15 @@ and the compass bearing points **from you toward that cell** (here, the waves de
 explanation in-app. If no usable water cell is nearby, the card shows "No marine forecast for this
 location" instead.
 
+## Your data
+
+There are no accounts and no server — Lunitidal runs entirely in your browser. Your saved
+spots and preferences (units, time format, theme, chart datum) live in this browser's local
+storage on **this device only**: they don't sync across devices, and clearing the site's data
+resets them. The only network requests are for optional extras — place search, the marine
+forecast, map tiles, and a one-time IP-based guess at your starting region — and nothing you
+do is tracked or sent to us.
+
 ## Credits
 
 - Tide data: TICON-4 / UHSLC via
@@ -75,7 +84,7 @@ location" instead.
   (MIT).
 - Place search & marine forecast: [Open-Meteo](https://open-meteo.com) (CC-BY-4.0).
 - Approximate IP location: [geojs.io](https://www.geojs.io).
-- Map tiles: [OpenFreeMap](https://openfreemap.org) / OpenStreetMap.
+- Map tiles: [OpenFreeMap](https://openfreemap.org) / OpenStreetMap (ODbL).
 
 ---
 
@@ -123,8 +132,9 @@ src/
   engine/      pure, framework-agnostic core (prediction, datum, time, units,
                station lookup) — heavily unit-tested
   chart/       pure SVG chart geometry
-  sources/     network sources (geocode, marine, IP location)
+  sources/     network sources (geocode, reverse-geocode, marine, IP location)
   stores/      Svelte stores (selection, settings, favorites, persistence)
+  lib/         shared constants/helpers (e.g. external links)
   components/  UI components
   routes/      Home / Detail / Settings (hash-based routing)
 tests/e2e/   Playwright integration tests
@@ -138,9 +148,10 @@ against a production build (so the real service worker and offline paths are exe
 Every push runs the full suite in GitHub Actions, and **deploys to GitHub Pages only if it
 passes**. Please run `bun run test:all` before pushing.
 
-See [`docs/DESIGN_REVIEW.md`](docs/DESIGN_REVIEW.md) for the current UX/design backlog, and
-[`CLAUDE.md`](CLAUDE.md) for non-obvious gotchas worth knowing before you dig in.
+See [`CLAUDE.md`](CLAUDE.md) for non-obvious gotchas worth knowing before you dig in.
 
 ### License
 
-MIT (see `LICENSE`). Note the data attribution requirements above.
+The application code is MIT-licensed — see [`LICENSE`](LICENSE). The third-party tide data,
+forecasts, and map tiles it relies on carry their own licences (CC-BY-4.0, ODbL) with
+attribution requirements; those sources are listed under [Credits](#credits).
