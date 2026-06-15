@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { link } from 'svelte-spa-router';
+  import { link } from '../lib/router';
+  import { SITE_NAME } from '../seo/meta';
   import { settings } from '../stores/settings';
   import { selection, selectionStatus } from '../stores/selection';
   import { favorites, isFavorite, toggleFavorite } from '../stores/favorites';
@@ -126,7 +127,16 @@
     dayOffset = 0;
     scrubMs = Date.now();
   }
+
+  // Keep the browser tab title in sync as the location changes (client-side).
+  $: pageTitle = $selection
+    ? `${$selection.station.name} Tide Times — ${SITE_NAME}`
+    : `${SITE_NAME} — Tide Predictions`;
 </script>
+
+<svelte:head>
+  <title>{pageTitle}</title>
+</svelte:head>
 
 <header class="topbar">
   <h1>Lunitidal</h1>

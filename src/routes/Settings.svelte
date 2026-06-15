@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { link } from 'svelte-spa-router';
+  import { link } from '../lib/router';
   import { settings } from '../stores/settings';
   import { favorites } from '../stores/favorites';
   import { REPO_URL, LICENSE_URL } from '../lib/links';

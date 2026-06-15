@@ -8,7 +8,9 @@
     "predev": "bun run build:data",
     "dev": "vite",
     "prebuild": "bun run build:data",
-    "build": "vite build",
+    "build": "vite build && bun run prerender && bun run sitemap",
+    "prerender": "bun run scripts/prerender.ts",
+    "sitemap": "bun run scripts/build-sitemap.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -31,7 +33,6 @@
   "dependencies": {
     "@neaps/tide-predictor": "^0.9.0",
     "maplibre-gl": "^5.24.0",
-    "svelte-spa-router": "^5.1.0",
     "tz-lookup": "^6.1.25"
   }
 }
