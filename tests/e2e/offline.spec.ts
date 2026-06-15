@@ -17,6 +17,18 @@ test('works offline after first load (service worker precache)', async ({ page }
 });
 
 test('a station deep link still renders after going offline', async ({ page }) => {
+  // Stub the basemap with a valid empty style so this test doesn't depend on the
+  // openfreemap tiles being reachable/cached — its failure surfaces as a MapLibre
+  // AJAXError whose console text serialises inconsistently across environments.
+  // (Route handlers still intercept while offline, so the map renders either way.)
+  await page.route(/tiles\.openfreemap\.org/, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ version: 8, sources: {}, layers: [] }),
+    }),
+  );
+
   await page.goto('/tides/benoa-indonesia/');
   await page.waitForSelector('svg[role="slider"]');
   await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, {
