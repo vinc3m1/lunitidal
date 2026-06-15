@@ -16,6 +16,16 @@ describe('buildHeadTags', () => {
     expect(head).toContain('application/ld+json');
     expect(head).toContain('og:title');
   });
+
+  it('neutralises a `</script>` in a station name so the json-ld can\'t break out', () => {
+    const evil = buildHeadTags({ ...benoa, name: 'Evil</script><script>alert(1)' }, 'evil');
+    // The raw closing tag must not survive inside the ld+json block.
+    expect(evil).not.toContain('</script><script>');
+    expect(evil).toContain('\\u003c'); // escaped `<`
+    // The json-ld payload is still valid JSON after un-escaping.
+    const json = evil.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1] ?? '';
+    expect(() => JSON.parse(json)).not.toThrow();
+  });
 });
 
 describe('buildAppContent', () => {

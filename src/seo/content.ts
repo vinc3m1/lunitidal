@@ -48,12 +48,22 @@ function esc(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Escape a JSON string for safe embedding in `<script type="application/ld+json">`.
+ * HTML never parses entities inside a script element, so we can't use `esc()` here;
+ * instead neutralise the only sequences that could close the tag (`<`, `>`, `&`) as
+ * `\uXXXX` — still valid JSON, but a station name like `</script>` can't break out.
+ */
+function escJsonLd(json: string): string {
+  return json.replace(/[<>&]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
 /** `<head>` tags for a station page — replaces the shell's default SEO block. */
 export function buildHeadTags(m: StationMeta, slug: string): string {
   const title = buildTitle(m);
   const desc = buildDescription(m);
   const url = stationUrl(slug);
-  const ld = JSON.stringify(stationJsonLd(m, slug));
+  const ld = escJsonLd(JSON.stringify(stationJsonLd(m, slug)));
   return [
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(desc)}" />`,

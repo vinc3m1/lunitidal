@@ -101,38 +101,48 @@ async function main() {
 
   let written = 0;
   for (const entry of targets) {
-    const slug = idToSlug[entry.id];
-    const meta: StationMeta = {
-      name: entry.name,
-      region: entry.region,
-      country: entry.country,
-      lat: entry.lat,
-      lon: entry.lon,
-    };
-
-    let rows: TideRow[] = [];
+    // One bad station (unreadable file, an unwritable slug, …) must not abort the
+    // whole ~6k build — log and skip it instead.
     try {
-      rows = tideRows(await loadStationFile(entry.id), entry.tz, now);
-    } catch {
-      /* station file unreadable — still emit the page with meta + nearby links */
+      const slug = idToSlug[entry.id];
+      const meta: StationMeta = {
+        name: entry.name,
+        region: entry.region,
+        country: entry.country,
+        lat: entry.lat,
+        lon: entry.lon,
+      };
+
+      let rows: TideRow[] = [];
+      try {
+        rows = tideRows(await loadStationFile(entry.id), entry.tz, now);
+      } catch {
+        /* station file unreadable — still emit the page with meta + nearby links */
+      }
+
+      const head = buildHeadTags(meta, slug);
+      const content = buildAppContent(meta, rows, nearbyLinks(index, entry, idToSlug), {
+        datumLabel: entry.chartDatum,
+        sourceName: entry.source,
+        referenceDay: formatDay(startOfDayInTz(now, entry.tz), entry.tz),
+      });
+
+      // Replacer FUNCTIONS, not strings: a `$` in station-derived markup (e.g. a name
+      // with `$&`/`$1`) would otherwise be treated as a replacement special pattern and
+      // corrupt the output. A function return is inserted verbatim.
+      const html = template
+        .replace(SEO_BLOCK, () => head)
+        .replace('<div id="app"></div>', () => `<div id="app">${content}</div>`);
+
+      const dir = new URL(`tides/${slug}/`, DIST);
+      await mkdir(dir, { recursive: true });
+      await writeFile(new URL('index.html', dir), html);
+      written++;
+
+      if (written % 1000 === 0) console.log(`  …${written}/${targets.length}`);
+    } catch (err) {
+      console.warn(`prerender: skipped ${entry.id}:`, err);
     }
-
-    const head = buildHeadTags(meta, slug);
-    const content = buildAppContent(meta, rows, nearbyLinks(index, entry, idToSlug), {
-      datumLabel: entry.chartDatum,
-      sourceName: entry.source,
-      referenceDay: formatDay(startOfDayInTz(now, entry.tz), entry.tz),
-    });
-
-    const html = template
-      .replace(SEO_BLOCK, head)
-      .replace('<div id="app"></div>', `<div id="app">${content}</div>`);
-
-    const dir = new URL(`tides/${slug}/`, DIST);
-    await mkdir(dir, { recursive: true });
-    await writeFile(new URL('index.html', dir), html);
-
-    if (++written % 1000 === 0) console.log(`  …${written}/${targets.length}`);
   }
 
   console.log(`prerender: wrote ${written} station pages + 404.html`);
