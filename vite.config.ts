@@ -32,9 +32,15 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,json,svg,png,woff2}'],
         // Precache the app shell + slim index + benoa seed, but NOT the thousands of
-        // per-station constituent files (those are runtime-cached on demand below).
-        globIgnores: ['**/data/stations/**'],
+        // per-station constituent files OR the thousands of prerendered station pages
+        // (both are runtime-cached / served from the shell on demand instead).
+        globIgnores: ['**/data/stations/**', '**/tides/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Navigations (incl. `/tides/<slug>/` deep links) fall back to the precached
+        // shell when offline; the SPA then routes from the URL. Keep non-document
+        // assets (sitemap, robots, station JSON) off the fallback so they hit network.
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/robots\.txt$/, /^\/data\//],
         // Seed station data + index are precached so first launch works offline.
         runtimeCaching: [
           {

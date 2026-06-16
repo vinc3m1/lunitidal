@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { link } from 'svelte-spa-router';
+  import { link } from '../lib/router';
   import { selection } from '../stores/selection';
   import { settings } from '../stores/settings';
   import { availableDatums } from '../engine/datum';
@@ -18,6 +18,10 @@
     settings.update((s) => ({ ...s, datum: v === '' ? null : v }));
   }
 </script>
+
+<svelte:head>
+  <title>Source &amp; accuracy — Lunitidal</title>
+</svelte:head>
 
 <header class="topbar">
   <a class="back" use:link href="/" data-testid="nav-back" aria-label="Back">‹ Back</a>

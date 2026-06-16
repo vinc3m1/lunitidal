@@ -2,6 +2,7 @@ import { get, writable } from 'svelte/store';
 import { loadIndex, loadSeedStation, loadStation, nearest } from '../engine/stations';
 import { timezoneAt } from '../engine/timezone';
 import type { Station } from '../engine/types';
+import { buildSlugMap, type SlugMaps } from '../seo/slug';
 import { getIpLocation } from '../sources/ipgeo';
 import { reverseGeocode } from '../sources/reverse';
 import { isLegacyLabel, type Favorite } from './favorites';
@@ -151,6 +152,33 @@ export async function selectPoint(
     point: { lat, lon },
     timezone: timezone || lookedUpTz || station.timezone,
   });
+}
+
+/**
+ * id<->slug maps, derived once from the station index (no separate file shipped).
+ * The prerender + sitemap scripts build the same map from the same index, so the
+ * `/tides/<slug>/` URLs always line up with what the router resolves.
+ */
+let slugMaps: SlugMaps | null = null;
+export async function loadSlugMaps(): Promise<SlugMaps> {
+  if (slugMaps) return slugMaps;
+  slugMaps = buildSlugMap(await loadIndex());
+  return slugMaps;
+}
+
+/** Slug for a station id, if the maps are already loaded; null otherwise. */
+export function slugForStationId(id: string): string | null {
+  return slugMaps?.idToSlug[id] ?? null;
+}
+
+/** Resolve a `/tides/<slug>/` deep link to its station and select it. */
+export async function selectStationBySlug(slug: string): Promise<void> {
+  const maps = await loadSlugMaps();
+  const id = maps.slugToId[slug];
+  if (!id) throw new Error(`Unknown station slug: ${slug}`);
+  const index = await loadIndex();
+  const entry = index.find((e) => e.id === id);
+  await selectStationId(id, entry?.name ?? id);
 }
 
 /** Pick a station directly (offline station search). */

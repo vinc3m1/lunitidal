@@ -127,16 +127,18 @@ For e2e you'll need the browser once: `bunx playwright install chromium`.
 ### Project layout
 
 ```
-scripts/   build-time tooling (station-index extraction, icon generation)
+scripts/   build-time tooling (station-index extraction, icon generation,
+           per-station prerender + sitemap)
 src/
   engine/      pure, framework-agnostic core (prediction, datum, time, units,
                station lookup) — heavily unit-tested
   chart/       pure SVG chart geometry
   sources/     network sources (geocode, reverse-geocode, marine, IP location)
   stores/      Svelte stores (selection, settings, favorites, persistence)
-  lib/         shared constants/helpers (e.g. external links)
+  seo/         pure slug / meta / prerender-content builders (shared build + runtime)
+  lib/         shared constants/helpers (router, external links)
   components/  UI components
-  routes/      Home / Detail / Settings (hash-based routing)
+  routes/      Home / Detail / Settings (history-based routing; `/tides/<slug>/` per station)
 tests/e2e/   Playwright integration tests
 public/data/ generated station data (git-ignored)
 ```
