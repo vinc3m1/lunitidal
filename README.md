@@ -20,6 +20,9 @@ Install it to your home screen and it keeps working without a connection.
   starts there (falling back to Benoa, Bali).
 - **Waves & swell:** an optional marine forecast layered on top of the astronomical tide
   (needs a connection; degrades gracefully offline).
+- **Day & night:** the chart is shaded with a day → twilight → night gradient and marks the
+  exact sunrise/sunset, with the times listed for the day. Computed on-device from the
+  location — no network, works offline.
 - **Make it yours:** save favorite spots and set your units (m/ft, km/mi), time format,
   theme, and chart datum.
 
