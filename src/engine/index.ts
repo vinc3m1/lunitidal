@@ -4,6 +4,7 @@ export * from './predictor';
 export * from './datum';
 export * from './time';
 export * from './timezone';
+export * from './sun';
 export * from './units';
 export * from './confidence';
 export * from './stations';

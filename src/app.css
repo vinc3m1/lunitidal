@@ -9,6 +9,9 @@
   /* Tentative "proposed" map pin — deliberately distinct from --falling (current
      location) and --accent (tide station) so the three map dots never blur together. */
   --proposed: #4ade80;
+  /* Night/twilight shading on the tide chart — a deep indigo darker than the surface so the
+     shaded part of the day reads as "dark" without overpowering the curve. */
+  --night: #050a16;
   color-scheme: dark;
 }
 
@@ -21,6 +24,7 @@
   --rising: #0a7ea4;
   --falling: #c9711f;
   --proposed: #16a34a;
+  --night: #24426e;
   color-scheme: light;
 }
 

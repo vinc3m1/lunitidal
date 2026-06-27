@@ -3,6 +3,7 @@
   import { buildAreaPath, buildLinePath, levelTicks, makeScale } from '../chart/geometry';
   import { formatHeight } from '../engine/units';
   import { formatTime } from '../engine/time';
+  import { sunBandStops, sunTimes } from '../engine/sun';
 
   export let points: TidePoint[];
   export let extremes: Extreme[];
@@ -13,8 +14,13 @@
   export let now: Date;
   /** Current scrub instant (ms). Bound by the parent so the readout stays in sync. */
   export let scrubMs: number;
+  /** Location coords for the day/night shading. Null hides it (e.g. before a location loads). */
+  export let sunLat: number | null = null;
+  export let sunLon: number | null = null;
 
   const padding = { top: 24, right: 16, bottom: 28, left: 44 };
+  // Peak strength of the night tint; the per-stop intensity (0..1) scales it down through twilight.
+  const NIGHT_OPACITY = 0.45;
   let width = 360;
   let container: HTMLDivElement;
   let dragging = false;
@@ -45,6 +51,16 @@
   $: scrubX = scale.xOf(clampedScrub);
   $: scrubY = scale.yOf(scrubLevel);
   $: nowX = now.getTime() >= startMs && now.getTime() <= endMs ? scale.xOf(now.getTime()) : null;
+
+  // Sun shading: a day → twilight → night gradient behind the curve, plus a faint hairline at the
+  // exact sunrise/sunset instant. Computed on-device (no fetch) from the location's coordinates.
+  $: hasSun = sunLat !== null && sunLon !== null;
+  $: nightStops = hasSun ? sunBandStops(startMs, endMs, sunLat as number, sunLon as number) : [];
+  $: sun = hasSun ? sunTimes(new Date((startMs + endMs) / 2), sunLat as number, sunLon as number) : null;
+  $: sunriseMs = sun?.sunrise?.getTime() ?? null;
+  $: sunsetMs = sun?.sunset?.getTime() ?? null;
+  $: sunriseX = sunriseMs !== null && sunriseMs >= startMs && sunriseMs <= endMs ? scale.xOf(sunriseMs) : null;
+  $: sunsetX = sunsetMs !== null && sunsetMs >= startMs && sunsetMs <= endMs ? scale.xOf(sunsetMs) : null;
 
   function setScrubFromClientX(clientX: number) {
     if (!container) return;
@@ -120,7 +136,29 @@
         <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.45" />
         <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02" />
       </linearGradient>
+      {#if nightStops.length}
+        <linearGradient id="nightBand" x1="0" y1="0" x2="1" y2="0">
+          {#each nightStops as s}
+            <stop
+              offset={`${(s.offset * 100).toFixed(2)}%`}
+              stop-color="var(--night)"
+              stop-opacity={(s.intensity * NIGHT_OPACITY).toFixed(3)}
+            />
+          {/each}
+        </linearGradient>
+      {/if}
     </defs>
+
+    {#if nightStops.length}
+      <rect
+        class="nightBand"
+        x={padding.left}
+        y={padding.top}
+        width={scale.innerWidth}
+        height={scale.innerHeight}
+        fill="url(#nightBand)"
+      />
+    {/if}
 
     {#each ticks as t}
       <line class="grid" x1={padding.left} x2={width - padding.right} y1={t.y} y2={t.y} />
@@ -143,6 +181,21 @@
         {formatTime(e.time, tz, timeFormat)}
       </text>
     {/each}
+
+    {#if sunriseX !== null && sun?.sunrise}
+      <g class="sunMark">
+        <title>{`Sunrise ${formatTime(sun.sunrise, tz, timeFormat)}`}</title>
+        <line class="sunLine" x1={sunriseX} x2={sunriseX} y1={padding.top} y2={scale.baselineY} />
+        <circle class="sunDot" cx={sunriseX} cy={padding.top} r="3" />
+      </g>
+    {/if}
+    {#if sunsetX !== null && sun?.sunset}
+      <g class="sunMark">
+        <title>{`Sunset ${formatTime(sun.sunset, tz, timeFormat)}`}</title>
+        <line class="sunLine" x1={sunsetX} x2={sunsetX} y1={padding.top} y2={scale.baselineY} />
+        <circle class="sunDot" cx={sunsetX} cy={padding.top} r="3" />
+      </g>
+    {/if}
 
     {#if nowX !== null}
       <line class="nowLine" x1={nowX} x2={nowX} y1={padding.top} y2={scale.baselineY} />
@@ -187,6 +240,21 @@
     fill: var(--accent);
   }
   .ext.low {
+    fill: var(--falling);
+  }
+  .nightBand {
+    pointer-events: none;
+  }
+  .sunMark {
+    pointer-events: none;
+  }
+  .sunLine {
+    stroke: var(--falling);
+    stroke-opacity: 0.5;
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+  }
+  .sunDot {
     fill: var(--falling);
   }
   .nowLine {

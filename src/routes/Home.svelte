@@ -5,7 +5,7 @@
   import { settings } from '../stores/settings';
   import { selection, selectionStatus } from '../stores/selection';
   import { favorites, isFavorite, toggleFavorite } from '../stores/favorites';
-  import { addDays, createModel, datumOffset, formatDay, startOfDayInTz, tzAbbrev } from '../engine';
+  import { addDays, createModel, datumOffset, formatDay, formatTime, startOfDayInTz, sunTimes, tzAbbrev } from '../engine';
   import type { Extreme, TidePoint } from '../engine/types';
   import type { TideModel } from '../engine/predictor';
   import TideChart from '../components/TideChart.svelte';
@@ -88,6 +88,11 @@
   $: offset = station ? datumOffset(station, $settings.datum ?? undefined) : 0;
   $: datumName = $settings.datum ?? station?.chart_datum ?? 'MSL';
   $: tzLabel = station ? tzAbbrev(dayStart, tz) : '';
+  // Sunrise/sunset for the displayed day at the chosen point (not the snapped gauge), computed
+  // on-device. Mirrors the chart's day/night shading; gives the exact times in text for mobile.
+  $: sun = $selection
+    ? sunTimes(new Date((dayStart.getTime() + dayEnd.getTime()) / 2), $selection.point.lat, $selection.point.lon)
+    : null;
 
   $: points = (model ? model.timeline(dayStart, dayEnd, 600) : []).map(
     (p): TidePoint => ({ time: p.time, level: p.level + offset }),
@@ -226,6 +231,8 @@
           heightUnit={$settings.heightUnit}
           timeFormat={$settings.timeFormat}
           {now}
+          sunLat={$selection.point.lat}
+          sunLon={$selection.point.lon}
           bind:scrubMs
         />
       </section>
@@ -290,6 +297,19 @@
           <a class="detail-link" use:link href="/detail" data-testid="nav-detail">ⓘ Source &amp; accuracy</a>
         </div>
         <ExtremesTable {extremes} {tz} heightUnit={$settings.heightUnit} timeFormat={$settings.timeFormat} />
+        {#if sun}
+          <p class="sun" data-testid="sun-times">
+            {#if sun.sunrise && sun.sunset}
+              <span title="Sunrise">☀&#xFE0E; {formatTime(sun.sunrise, tz, $settings.timeFormat)}</span>
+              <span class="sep">·</span>
+              <span title="Sunset">☾&#xFE0E; {formatTime(sun.sunset, tz, $settings.timeFormat)}</span>
+            {:else if sun.alwaysUp}
+              <span>☀&#xFE0E; Sun up all day</span>
+            {:else if sun.alwaysDown}
+              <span>☾&#xFE0E; No sunrise (polar night)</span>
+            {/if}
+          </p>
+        {/if}
         <p class="datum">Heights above {datumName} · {$selection.station.source?.name ?? 'tide model'}</p>
         <p class="datum" data-testid="tz-note">Times shown in {tzLabel} — the selected location’s local time</p>
       </section>
@@ -465,6 +485,17 @@
     margin: 0;
     color: var(--muted);
     font-size: 0.8rem;
+  }
+  .sun {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+  .sun .sep {
+    opacity: 0.5;
   }
 
   @media (min-width: 56rem) {
