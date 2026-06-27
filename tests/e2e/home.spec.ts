@@ -9,8 +9,8 @@ test('renders the tide chart with the day’s extremes', async ({ page }) => {
   const extremes = await page.locator('.extremes li').count();
   expect(extremes).toBeGreaterThanOrEqual(3);
   expect(extremes).toBeLessThanOrEqual(5);
-  // area fill + curve line of the tide chart specifically
-  await expect(page.locator('svg[role="slider"]').first().locator('path')).toHaveCount(2);
+  // area fill + curve line of the tide chart specifically (other paths, e.g. sun icons, excluded)
+  await expect(page.locator('svg[role="slider"]').first().locator('path.tideArea, path.tideLine')).toHaveCount(2);
 });
 
 test('shows an answer-first readout', async ({ page }) => {

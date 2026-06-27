@@ -24,14 +24,18 @@ test('shades the tide chart with a day/night gradient band', async ({ page }) =>
   await expect(chart.locator('#nightBand stop').first()).toBeAttached();
 });
 
-test('marks the exact sunrise and sunset instants with hairlines', async ({ page }) => {
+test('marks the exact sunrise and sunset instants with hairlines + sun icons', async ({ page }) => {
   const chart = page.locator('svg[role="slider"]').first();
-  // One <g.sunMark> for sunrise, one for sunset — each carries an accessible <title>.
+  // One <g.sunMark> for sunrise, one for sunset — each carries an accessible <title>, a hairline,
+  // and a half-sun-over-horizon icon (label, not a terminator dot).
   await expect(chart.locator('g.sunMark')).toHaveCount(2);
   await expect(chart.locator('g.sunMark title').first()).toContainText(/Sun(rise|set) \d{1,2}:\d{2}/);
+  await expect(chart.locator('g.sunMark line.sunLine')).toHaveCount(2);
+  await expect(chart.locator('g.sunMark g.sunIcon')).toHaveCount(2);
 });
 
-test('the tide curve is still exactly two paths (band/markers are not paths)', async ({ page }) => {
-  // Guards the home.spec path-count invariant against the shading additions.
-  await expect(page.locator('svg[role="slider"]').first().locator('path')).toHaveCount(2);
+test('the tide curve is still exactly its two paths (area + line)', async ({ page }) => {
+  // The sun icons add <path> arcs, so we count the tide curve by class, not every path.
+  const chart = page.locator('svg[role="slider"]').first();
+  await expect(chart.locator('path.tideArea, path.tideLine')).toHaveCount(2);
 });

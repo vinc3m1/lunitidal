@@ -167,8 +167,8 @@
       </text>
     {/each}
 
-    <path d={areaPath} fill="url(#tideFill)" />
-    <path d={linePath} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" />
+    <path class="tideArea" d={areaPath} fill="url(#tideFill)" />
+    <path class="tideLine" d={linePath} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" />
 
     {#each extremes as e}
       <circle class={e.high ? 'ext high' : 'ext low'} cx={scale.xOf(e.time.getTime())} cy={scale.yOf(e.level)} r="3.5" />
@@ -182,19 +182,34 @@
       </text>
     {/each}
 
-    {#if sunriseX !== null && sun?.sunrise}
+    {#snippet sunMarker(x: number, rise: boolean, label: string)}
       <g class="sunMark">
-        <title>{`Sunrise ${formatTime(sun.sunrise, tz, timeFormat)}`}</title>
-        <line class="sunLine" x1={sunriseX} x2={sunriseX} y1={padding.top} y2={scale.baselineY} />
-        <circle class="sunDot" cx={sunriseX} cy={padding.top} r="3" />
+        <title>{label}</title>
+        <line class="sunLine" x1={x} x2={x} y1={padding.top} y2={scale.baselineY} />
+        <!-- A small half-sun-over-horizon glyph with a rise/set arrow, parked in the top margin
+             just above the plot edge as a label for the hairline (not a terminator on the line). -->
+        <g class="sunIcon" transform={`translate(${x}, ${padding.top - 13})`}>
+          <path d="M -3 11 A 3 3 0 0 1 3 11" />
+          <line x1="-7" y1="11" x2="9" y2="11" />
+          <line x1="0" y1="6.5" x2="0" y2="4.5" />
+          <line x1="-3.2" y1="7.8" x2="-4.6" y2="6.4" />
+          <line x1="3.2" y1="7.8" x2="4.6" y2="6.4" />
+          {#if rise}
+            <line x1="7" y1="11" x2="7" y2="4.5" />
+            <polyline points="5.5,6 7,4.5 8.5,6" />
+          {:else}
+            <line x1="7" y1="4.5" x2="7" y2="11" />
+            <polyline points="5.5,9.5 7,11 8.5,9.5" />
+          {/if}
+        </g>
       </g>
+    {/snippet}
+
+    {#if sunriseX !== null && sun?.sunrise}
+      {@render sunMarker(sunriseX, true, `Sunrise ${formatTime(sun.sunrise, tz, timeFormat)}`)}
     {/if}
     {#if sunsetX !== null && sun?.sunset}
-      <g class="sunMark">
-        <title>{`Sunset ${formatTime(sun.sunset, tz, timeFormat)}`}</title>
-        <line class="sunLine" x1={sunsetX} x2={sunsetX} y1={padding.top} y2={scale.baselineY} />
-        <circle class="sunDot" cx={sunsetX} cy={padding.top} r="3" />
-      </g>
+      {@render sunMarker(sunsetX, false, `Sunset ${formatTime(sun.sunset, tz, timeFormat)}`)}
     {/if}
 
     {#if nowX !== null}
@@ -249,13 +264,18 @@
     pointer-events: none;
   }
   .sunLine {
-    stroke: var(--falling);
-    stroke-opacity: 0.5;
+    stroke: var(--muted);
+    stroke-opacity: 0.4;
     stroke-width: 1;
     stroke-dasharray: 2 3;
   }
-  .sunDot {
-    fill: var(--falling);
+  .sunIcon {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1;
+    stroke-opacity: 0.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
   .nowLine {
     stroke: var(--text);
