@@ -85,8 +85,8 @@
   $: tz = $selection?.timezone ?? station?.timezone ?? 'UTC';
   $: dayStart = station ? addDays(startOfDayInTz(now, tz), dayOffset) : now;
   $: dayEnd = addDays(dayStart, 1);
-  $: offset = station ? datumOffset(station, $settings.datum ?? undefined) : 0;
-  $: datumName = $settings.datum ?? station?.chart_datum ?? 'MSL';
+  $: offset = station ? datumOffset(station) : 0;
+  $: datumName = station?.chart_datum ?? 'MSL';
   $: tzLabel = station ? tzAbbrev(dayStart, tz) : '';
   // Sunrise/sunset for the displayed day at the chosen point (not the snapped gauge), computed
   // on-device. Mirrors the chart's day/night shading; gives the exact times in text for mobile.

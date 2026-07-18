@@ -12,11 +12,6 @@
   $: constituents = station?.harmonic_constituents
     ? [...station.harmonic_constituents].sort((a, b) => b.amplitude - a.amplitude)
     : [];
-
-  function onDatum(e: Event) {
-    const v = (e.target as HTMLSelectElement).value;
-    settings.update((s) => ({ ...s, datum: v === '' ? null : v }));
-  }
 </script>
 
 <svelte:head>
@@ -47,13 +42,25 @@
 
   <section class="card">
     <h3>Chart datum</h3>
-    <p class="muted">Heights are shown relative to this reference level.</p>
-    <select data-testid="datum-select" on:change={onDatum} value={$settings.datum ?? ''}>
-      <option value="">Auto — {station.chart_datum} (station default)</option>
-      {#each datums as d}
-        <option value={d}>{d} ({formatHeight(-datumOffset(station, d), $settings.heightUnit)} vs MSL)</option>
-      {/each}
-    </select>
+    <p class="muted">
+      Heights are shown above <strong>{station.chart_datum}</strong>, this station's chart
+      datum — the same reference its published tide tables use.
+    </p>
+    {#if datums.length}
+      <table data-testid="datums">
+        <thead>
+          <tr><th>Datum</th><th>vs MSL</th></tr>
+        </thead>
+        <tbody>
+          {#each datums as d}
+            <tr>
+              <td>{d}{d === station.chart_datum ? ' (chart datum)' : ''}</td>
+              <td>{formatHeight(-datumOffset(station, d), $settings.heightUnit)}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
   </section>
 
   <section class="card">
@@ -184,16 +191,6 @@
   .conf.rough,
   .conf.far {
     color: var(--falling);
-  }
-  select {
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0.6rem;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
-    min-height: 48px;
-    font-size: 1rem;
   }
   dl {
     margin: 0;
