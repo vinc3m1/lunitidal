@@ -26,6 +26,21 @@ describe('datum', () => {
     expect(datumOffset({ chart_datum: 'LAT', datums: {} })).toBe(0);
   });
 
+  // NOAA datums tables are relative to the station datum (STND = 0), not MSL —
+  // offsets must be measured against the table's own MSL entry.
+  const sanFranciscoLike = {
+    chart_datum: 'MLLW',
+    datums: { STND: 0, MHHW: 3.602, MSL: 2.773, MLW: 2.168, MLLW: 1.822, NAVD88: 1.804 },
+  };
+
+  it('handles station-datum-relative tables (NOAA): MSL→MLLW is MSL - MLLW', () => {
+    expect(datumOffset(sanFranciscoLike)).toBeCloseTo(0.951, 5); // 2.773 - 1.822
+    expect(datumOffset(sanFranciscoLike, 'MLLW')).toBeCloseTo(0.951, 5);
+    expect(datumOffset(sanFranciscoLike, 'MSL')).toBe(0);
+    expect(datumOffset(sanFranciscoLike, 'STND')).toBeCloseTo(2.773, 5);
+    expect(toDatum(-0.5, sanFranciscoLike)).toBeCloseTo(0.451, 5);
+  });
+
   it('lists available datums', () => {
     expect(availableDatums(benoaLike)).toContain('LAT');
     expect(availableDatums(benoaLike)).toContain('MLLW');

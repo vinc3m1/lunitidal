@@ -85,14 +85,25 @@ test('recenter control reframes the selection without dropping a location pin', 
 
   await recenter.click();
 
-  // Recenter must initiate a camera move toward the selection — and never drop a
+  // Recenter must move the camera back to the selection — and never drop a
   // "Use this location" pin (that flow now lives in the search "Use my location").
-  const moveTarget = await map.evaluate((el) => {
-    const m = (el.querySelector('.map') as { _maplibreMap?: any })?._maplibreMap;
-    const c = m.getCenter(); // ease target is reflected immediately by transform setup
-    return { moving: m.isMoving(), lng: c.lng, lat: c.lat };
-  });
-  expect(moveTarget.moving).toBe(true);
+  // The ease starts synchronously in the click handler, so after the click the map is
+  // either still animating or already re-centred — accept both. Asserting isMoving()
+  // alone is flaky (a slow CI runner can outlast the 450 ms ease before the first
+  // evaluate round-trip); asserting arrival alone hangs where tile/style requests are
+  // blocked, because MapLibre's render loop never advances the animation.
+  await expect
+    .poll(
+      () =>
+        map.evaluate((el) => {
+          const m = (el.querySelector('.map') as { _maplibreMap?: any })?._maplibreMap;
+          const c = m.getCenter();
+          const arrived = Math.abs(c.lng - 115.2) < 1 && Math.abs(c.lat - -8.7) < 1;
+          return m.isMoving() || arrived;
+        }),
+      { timeout: 5_000 },
+    )
+    .toBe(true);
   await expect(map.getByTestId('pending-location-marker')).toHaveCount(0);
   await expect(map.getByTestId('use-pin')).toHaveCount(0);
 });

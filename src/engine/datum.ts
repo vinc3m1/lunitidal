@@ -1,8 +1,12 @@
 /**
  * Chart-datum conversion. The predictor synthesises around MSL = 0; published tide
  * tables are usually relative to a chart datum (LAT/MLLW/…). To express a level
- * "above datum D", shift by -datums[D]. Benoa: chart_datum=LAT, datums.LAT=-1.63,
- * so the offset is +1.63 m.
+ * "above datum D", shift by datums[MSL] - datums[D] — the datums table's zero point
+ * varies by source (TICON tables are MSL-relative so datums.MSL = 0; NOAA tables are
+ * station-datum-relative so datums.MSL is a few metres), which is why the offset must
+ * be measured against the table's own MSL entry, never assumed to be -datums[D].
+ * Benoa: chart_datum=LAT, MSL=0, LAT=-1.63 → offset +1.63 m.
+ * San Francisco: chart_datum=MLLW, MSL=2.773, MLLW=1.822 → offset +0.951 m.
  */
 import type { Station } from './types';
 
@@ -14,8 +18,10 @@ export function datumOffset(station: DatumSource, target?: string): number {
   if (!datums) return 0;
   const key = target ?? station.chart_datum;
   const v = datums[key];
-  // `+ 0` normalises -0 (from negating a 0 datum) to +0.
-  return typeof v === 'number' ? -v + 0 : 0;
+  if (typeof v !== 'number') return 0;
+  const msl = typeof datums.MSL === 'number' ? datums.MSL : 0;
+  // `+ 0` normalises -0 (from subtracting equal values) to +0.
+  return msl - v + 0;
 }
 
 /** Convert an MSL-relative level to one above `target` (defaults to chart datum). */

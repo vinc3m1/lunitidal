@@ -28,8 +28,14 @@ apparent from there or the code.
   is always fetched with `timezone=UTC` so the wave cell's zone never leaks into display.
 
 - **Datum:** build the predictor with `offset: 0` (heights are MSL-relative) and apply the
-  chart-datum offset in the display layer (`src/engine/datum.ts`). Don't bake datum into the
-  predictor — the UI lets users switch reference levels live.
+  chart-datum offset in the display layer (`src/engine/datum.ts`). Heights are ALWAYS displayed
+  above the station's own `chart_datum` — there is deliberately no user-facing datum switcher
+  (a global override mislabels stations that lack the chosen datum key, and datum-less
+  subordinates can't convert at all). The `datums` table's zero varies
+  by source (TICON: MSL = 0; NOAA: station datum = 0, MSL a few metres up), so offsets are
+  always `datums[MSL] - datums[target]` — never `-datums[target]`. Related: NOAA subordinate
+  ratios apply to tide-table heights (above the *reference's* chart datum), not MSL-relative
+  levels — the subordinate branch of `createModel` converts before/after warping.
 
 - **Expected inaccuracy:** Benoa heights run ~0.3–0.5 m above the official port tables.
   That's the TICON-4 (UHSLC gauge) analysis differing from the port solution — not a bug.
