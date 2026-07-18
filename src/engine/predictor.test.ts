@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createModel } from './predictor';
-import { toDatum } from './datum';
+import { datumOffset, toDatum } from './datum';
 import type { Station } from './types';
-// Static import (resolveJsonModule) requires `bun run build:data` to have
-// produced public/data/benoa.json. The `as Station` cast narrows the JSON's
+// Static imports (resolveJsonModule) require `bun run build:data` to have
+// produced public/data/. The `as Station` casts narrow the JSON's
 // widened `type: string` back to the union.
 import benoaJson from '../../public/data/benoa.json';
+import richmondJson from '../../public/data/stations/noaa__9414849.json';
+import sanFranciscoJson from '../../public/data/stations/noaa__9414290.json';
 
 /**
  * Validates the real Benoa seed (requires `bun run build:data` to have produced
@@ -126,8 +128,10 @@ describe('Subordinate predictor', () => {
       const actualTimeShift = (s.time.getTime() - r.time.getTime()) / 60_000;
       expect(actualTimeShift).toBeCloseTo(expectedTimeShift, 1);
 
-      // Verify height offset (ratio of 0.8)
-      expect(s.level).toBeCloseTo(r.level * 0.8, 4);
+      // Ratios apply to tide-table heights (above the reference's chart datum),
+      // then the result converts back to this station's model space.
+      const off = datumOffset(benoa); // ref and sub share Benoa's datums table
+      expect(s.level).toBeCloseTo((r.level + off) * 0.8 - off, 4);
     }
   });
 
@@ -163,5 +167,58 @@ describe('Subordinate predictor', () => {
     }
     // Verify there are no stair-stepped flat plateaus
     expect(flatCount).toBeLessThan(2);
+  });
+});
+
+/**
+ * Regression test for Bay Area heights being off by the MSL→MLLW conversion
+ * (~3.2 ft): NOAA datums tables are station-datum-relative, and NOAA subordinate
+ * ratios apply to MLLW-referenced tide-table heights, not MSL-relative levels.
+ * Expected values are NOAA's published predictions for Richmond Inner Harbor
+ * (station 9414849, ratios on SAN FRANCISCO Golden Gate 9414290), 2026-07-18 GMT,
+ * feet above MLLW. NOAA predicts from the same harmonic solution we ship, so
+ * unlike the TICON/Benoa caveat above, exact-ish heights ARE meaningful here.
+ */
+describe('Richmond Inner Harbor (NOAA subordinate on STND-relative datums)', () => {
+  const richmond = richmondJson as unknown as Station;
+  const sanFrancisco = sanFranciscoJson as unknown as Station;
+  richmond.referenceStation = sanFrancisco;
+
+  const M_TO_FT = 3.28084;
+  const start = new Date('2026-07-18T00:00:00Z');
+  const end = new Date('2026-07-19T00:00:00Z');
+
+  // From https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=9414849
+  //   &product=predictions&datum=MLLW&units=english&time_zone=gmt&interval=hilo
+  const noaa = [
+    { t: '2026-07-18T04:12:00Z', ft: 2.097, high: false },
+    { t: '2026-07-18T09:51:00Z', ft: 5.817, high: true },
+    { t: '2026-07-18T16:30:00Z', ft: -0.154, high: false },
+    { t: '2026-07-18T23:20:00Z', ft: 5.842, high: true },
+  ];
+
+  it('matches NOAA published heights above MLLW (display offset is 0 — no datums table)', () => {
+    const subModel = createModel(richmond);
+    expect(datumOffset(richmond)).toBe(0); // datum-less sub: model output IS the display value
+    const ex = subModel.extremes(start, end);
+    expect(ex.length).toBe(noaa.length);
+    for (let i = 0; i < noaa.length; i++) {
+      expect(ex[i].high).toBe(noaa[i].high);
+      const dtMin = Math.abs(ex[i].time.getTime() - new Date(noaa[i].t).getTime()) / 60_000;
+      expect(dtMin).toBeLessThan(15);
+      expect(Math.abs(ex[i].level * M_TO_FT - noaa[i].ft)).toBeLessThan(0.25); // ft
+    }
+  });
+
+  it('reference station itself converts to MLLW correctly (Golden Gate lows near 0, not -3 ft)', () => {
+    const refModel = createModel(sanFrancisco);
+    const off = datumOffset(sanFrancisco);
+    expect(off).toBeCloseTo(0.951, 3); // MSL 2.773 - MLLW 1.822
+    const lows = refModel
+      .extremes(start, end)
+      .filter((e) => e.low)
+      .map((e) => e.level + off);
+    // Above MLLW, lows sit near zero by construction of the datum.
+    for (const l of lows) expect(l).toBeGreaterThan(-0.5);
   });
 });

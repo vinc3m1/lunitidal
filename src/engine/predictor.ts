@@ -9,10 +9,17 @@
  * 60fps scrub, while extremes() is the expensive call (compute once per view).
  */
 import createTidePredictor from '@neaps/tide-predictor';
+import { datumOffset } from './datum';
 import type { Extreme, HarmonicConstituent, TidePoint, Station } from './types';
 
 export interface TideModel {
-  /** Water level (metres, MSL-relative) at an instant. Cheap — safe for scrub. */
+  /**
+   * Water level (metres, MSL-relative) at an instant. Cheap — safe for scrub.
+   * Exception: a subordinate station without a datums table yields levels above
+   * its chart datum instead (see the subordinate branch of createModel) — the
+   * display layer's datumOffset() is 0 there, so the two conventions agree on
+   * what ends up on screen.
+   */
   levelAt(time: Date): number;
   /** Highs/lows between two instants. Expensive — call once per view. */
   extremes(start: Date, end: Date): Extreme[];
@@ -52,6 +59,17 @@ export function createModel(station: Station | HarmonicConstituent[]): TideModel
 
     const refModel = createModel(station.referenceStation);
 
+    // Subordinate offsets (NOAA-style) are defined on the published tide-table
+    // heights — i.e. heights above the REFERENCE station's chart datum — not on
+    // MSL-relative levels. A ratio applied about the wrong zero skews every
+    // height, so: lift the reference level into chart-datum space, warp there,
+    // then shift back into this station's model space. Subordinates usually ship
+    // no datums table, so `subFromDatum` is 0 and the model's output is simply
+    // chart-datum-relative — matching the display layer, whose datumOffset() is
+    // also 0 for a datum-less station.
+    const refToDatum = datumOffset(station.referenceStation);
+    const subFromDatum = datumOffset(station);
+
     const getSubExtremes = (start: Date, end: Date): Extreme[] => {
       const padStart = new Date(start.getTime() - 12 * 3600_000);
       const padEnd = new Date(end.getTime() + 12 * 3600_000);
@@ -62,14 +80,15 @@ export function createModel(station: Station | HarmonicConstituent[]): TideModel
         const timeShiftMin = isHigh ? offsets.time.high : offsets.time.low;
         const subTime = new Date(e.time.getTime() + timeShiftMin * 60_000);
 
-        let subLevel = e.level;
+        let subLevel = e.level + refToDatum;
         if (offsets.height.type === 'ratio') {
           const ratio = isHigh ? offsets.height.high : offsets.height.low;
-          subLevel = e.level * ratio;
+          subLevel *= ratio;
         } else if (offsets.height.type === 'fixed') {
           const fixed = isHigh ? offsets.height.high : offsets.height.low;
-          subLevel = e.level + fixed;
+          subLevel += fixed;
         }
+        subLevel -= subFromDatum;
 
         return {
           time: subTime,

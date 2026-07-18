@@ -2,7 +2,7 @@
   import { link } from '../lib/router';
   import { selection } from '../stores/selection';
   import { settings } from '../stores/settings';
-  import { availableDatums } from '../engine/datum';
+  import { availableDatums, datumOffset } from '../engine/datum';
   import { confidenceForKm } from '../engine/confidence';
   import { formatDistance, formatHeight } from '../engine/units';
 
@@ -51,7 +51,7 @@
     <select data-testid="datum-select" on:change={onDatum} value={$settings.datum ?? ''}>
       <option value="">Auto — {station.chart_datum} (station default)</option>
       {#each datums as d}
-        <option value={d}>{d} ({formatHeight(station.datums[d], $settings.heightUnit)} vs MSL)</option>
+        <option value={d}>{d} ({formatHeight(-datumOffset(station, d), $settings.heightUnit)} vs MSL)</option>
       {/each}
     </select>
   </section>
