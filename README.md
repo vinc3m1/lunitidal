@@ -24,7 +24,7 @@ Install it to your home screen and it keeps working without a connection.
   exact sunrise/sunset, with the times listed for the day. Computed on-device from the
   location — no network, works offline.
 - **Make it yours:** save favorite spots and set your units (m/ft, km/mi), time format,
-  theme, and chart datum.
+  and theme.
 
 ## How to use it
 
@@ -33,8 +33,8 @@ Install it to your home screen and it keeps working without a connection.
 2. Tap **Change** to use your location, search a place/beach/station, or open the map.
 3. Read the big readout for the current state; drag the chart to see any time of day; use
    ‹ › to move between days, or tap the date to jump back to today.
-4. Tap **ⓘ Source & accuracy** to see which station the data comes from, switch the chart
-   datum, and view the underlying harmonic constituents.
+4. Tap **ⓘ Source & accuracy** to see which station the data comes from, its chart datum
+   and reference levels, and the underlying harmonic constituents.
 5. Tap **☆** to save a spot; manage saved spots and preferences in **Settings** (⚙).
 
 ## A note on accuracy
@@ -43,6 +43,11 @@ Predictions are **astronomical only** — the regular rise and fall driven by th
 sun. They don't include weather effects (wind, pressure, storm surge), and they come from
 the *nearest* tide station, which may be some distance from your exact spot. Treat them as
 a good guide, **not for navigation**.
+
+Heights are always shown above each station's own **chart datum** — the same reference
+level its published tide tables use (MLLW for NOAA stations, LAT for TICON) — so the
+numbers line up with local tables. There's no datum switcher; the Source & accuracy page
+lists the station's reference levels for anyone who needs to convert.
 
 Tide data is from TICON-4 (UHSLC sea-level analysis). Heights can differ from official
 port tables by a few tenths of a metre because it's an independent analysis, not the
@@ -73,7 +78,7 @@ location" instead.
 ## Your data
 
 There are no accounts and no server — Lunitidal runs entirely in your browser. Your saved
-spots and preferences (units, time format, theme, chart datum) live in this browser's local
+spots and preferences (units, time format, theme) live in this browser's local
 storage on **this device only**: they don't sync across devices, and clearing the site's data
 resets them. The only network requests are for optional extras — place search, the marine
 forecast, map tiles, and a one-time IP-based guess at your starting region — and nothing you
