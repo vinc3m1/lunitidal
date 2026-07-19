@@ -46,8 +46,9 @@ a good guide, **not for navigation**.
 
 Heights are always shown above each station's own **chart datum** — the same reference
 level its published tide tables use (MLLW for NOAA stations, LAT for TICON) — so the
-numbers line up with local tables. There's no datum switcher; the Source & accuracy page
-lists the station's reference levels for anyone who needs to convert.
+numbers line up with local tables. There's no datum switcher; when a station publishes its
+reference levels, the Source & accuracy page lists them for anyone who needs to convert
+(subordinate stations predicted by time/height offsets usually don't publish any).
 
 Tide data is from TICON-4 (UHSLC sea-level analysis). Heights can differ from official
 port tables by a few tenths of a metre because it's an independent analysis, not the
