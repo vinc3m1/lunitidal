@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { DistanceUnit, HeightUnit, TimeFormat } from '../engine/types';
   import { formatHeight, formatDistance } from '../engine/units';
   import { haversineKm, bearingDeg, compass16 } from '../engine/stations';
@@ -25,13 +26,15 @@
   let state: State = 'loading';
   let data: MarineData | null = null;
   let token = 0;
+  onDestroy(() => { token++; });
 
   async function load() {
+    const mine = ++token;
+    data = null;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       state = 'offline';
       return;
     }
-    const mine = ++token;
     state = 'loading';
     try {
       const d = await getMarine(lat, lon, dayStart, dayEnd);
@@ -182,7 +185,7 @@
   }
 </script>
 
-<svelte:window on:click={onWindowClick} on:keydown={onWindowKey} />
+<svelte:window on:online={load} on:offline={load} on:click={onWindowClick} on:keydown={onWindowKey} />
 
 <section class="card" data-testid="marine-card">
   <div class="head">

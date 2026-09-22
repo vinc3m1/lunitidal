@@ -86,3 +86,15 @@ test.describe('Marine Card Interactive Sync and Drag', () => {
     expect(newTideVal).not.toBe(initialTideVal);
   });
 });
+
+test('marine state and sample marker recover across connection changes without reload', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('marine-card')).toContainText('waves');
+  await expect(page.getByTestId('marine-sample-marker')).toBeVisible();
+  await page.context().setOffline(true);
+  await expect(page.getByTestId('marine-card')).toContainText(/connection/i);
+  await expect(page.getByTestId('marine-sample-marker')).toHaveCount(0);
+  await page.context().setOffline(false);
+  await expect(page.getByTestId('marine-card')).toContainText('waves');
+  await expect(page.getByTestId('marine-sample-marker')).toBeVisible();
+});
