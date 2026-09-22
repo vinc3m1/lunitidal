@@ -52,3 +52,12 @@ test('a plain visit to / keeps its URL (no rewrite); picking a place updates it'
   // The initial restore/seed selection must NOT rewrite the address bar.
   expect(new URL(page.url()).pathname).toBe('/');
 });
+
+test('a malformed station URL still boots the fallback chart', async ({ page }) => {
+  await page.goto('/');
+  // Exercise the installed app's navigation fallback. Vite's preview server
+  // rejects invalid encodings before serving HTML, independently of our router.
+  await page.waitForFunction(() => navigator.serviceWorker?.controller != null);
+  await page.goto('/tides/%E0%A4/');
+  await expect(page.locator('svg[role="slider"]').first()).toBeVisible();
+});

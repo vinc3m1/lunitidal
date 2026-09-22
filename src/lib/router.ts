@@ -19,7 +19,7 @@ function baseUrl(): string {
 /** Strip the deploy base prefix (e.g. a GitHub Pages subpath) → root-relative path. */
 function stripBase(p: string): string {
   const b = baseUrl().replace(/\/$/, '');
-  let rel = b && p.startsWith(b) ? p.slice(b.length) : p;
+  let rel = b && (p === b || p.startsWith(`${b}/`)) ? p.slice(b.length) : p;
   if (!rel.startsWith('/')) rel = `/${rel}`;
   return rel.replace(/\/{2,}/g, '/');
 }
@@ -27,7 +27,7 @@ function stripBase(p: string): string {
 /** Prefix the deploy base back onto a root-relative target for history. */
 function withBase(to: string): string {
   const b = baseUrl().replace(/\/$/, '');
-  if (!b || to.startsWith(b)) return to;
+  if (!b || to === b || to.startsWith(`${b}/`)) return to;
   return `${b}${to}`;
 }
 
@@ -51,7 +51,7 @@ export function navigate(to: string, opts: { replace?: boolean } = {}): void {
 
 /** Which top-level view a path renders. `/tides/<slug>/` renders Home (the slug just preselects a station). */
 export function matchRoute(p: string): RouteName {
-  const rel = stripBase(p);
+  const rel = stripBase(p).replace(/\/$/, '') || '/';
   if (rel === '/detail') return 'detail';
   if (rel === '/settings') return 'settings';
   return 'home';
@@ -60,7 +60,11 @@ export function matchRoute(p: string): RouteName {
 /** The station slug in a `/tides/<slug>/` path, or null for any other path. */
 export function stationSlugFromPath(p: string): string | null {
   const m = stripBase(p).match(/^\/tides\/([^/]+)\/?$/);
-  return m ? decodeURIComponent(m[1]) : null;
+  try {
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch {
+    return null; // A malformed percent escape must not prevent the app booting.
+  }
 }
 
 /**
@@ -68,14 +72,20 @@ export function stationSlugFromPath(p: string): string | null {
  * plain left-clicks on same-document `<a href="/…">` and route client-side.
  */
 export function link(node: HTMLAnchorElement) {
+  const original = node.getAttribute('href');
+  if (original?.startsWith('/') && !original.startsWith('//')) {
+    // Keep native opening/copying links correct on a project-site deployment too.
+    node.setAttribute('href', withBase(original));
+  }
   const onClick = (e: MouseEvent) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
       return;
     }
     const target = node.getAttribute('target');
     if (target && target !== '_self') return;
+    if (node.hasAttribute('download')) return;
     const href = node.getAttribute('href');
-    if (!href || !href.startsWith('/')) return; // external / hash / mailto: let the browser handle it
+    if (!href || !href.startsWith('/') || href.startsWith('//')) return;
     e.preventDefault();
     navigate(href);
   };
