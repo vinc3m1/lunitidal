@@ -21,6 +21,13 @@
   let mapsReady = false;
   let urlSyncArmed = false;
 
+  onMount(() => {
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+    const onChange = () => applyTheme(get(settings).theme);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  });
+
   onMount(async () => {
     // A `/tides/<slug>/` deep link wins over the saved location. If the slug is
     // unknown or the station isn't cached (offline), fall back to the normal restore.

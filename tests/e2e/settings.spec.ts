@@ -44,3 +44,30 @@ test('marine toggle hides the marine card', async ({ page }) => {
   await page.waitForSelector('svg[role="slider"]');
   await expect(page.getByTestId('marine-card')).toHaveCount(0);
 });
+
+test('marine On and Off buttons keep their named state when clicked again', async ({ page }) => {
+  await page.goto('/settings');
+  const on = page.getByTestId('seg-marine').getByRole('button', { name: 'On', exact: true });
+  const off = page.getByTestId('seg-marine').getByRole('button', { name: 'Off', exact: true });
+  await on.click();
+  await on.click();
+  await expect(on).toHaveAttribute('aria-pressed', 'true');
+  await off.click();
+  await off.click();
+  await expect(off).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('nav-back').click();
+  await expect(page.getByTestId('marine-card')).toHaveCount(0);
+});
+
+test('Auto theme follows system changes while explicit themes stay fixed', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Auto', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});

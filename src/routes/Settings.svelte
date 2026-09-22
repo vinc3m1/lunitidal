@@ -27,7 +27,7 @@
   const setDist = (v: 'km' | 'mi') => settings.update((s) => ({ ...s, distanceUnit: v }));
   const setTime = (v: '24h' | '12h') => settings.update((s) => ({ ...s, timeFormat: v }));
   const setTheme = (v: 'dark' | 'light' | 'auto') => settings.update((s) => ({ ...s, theme: v }));
-  const toggleMarine = () => settings.update((s) => ({ ...s, showMarine: !s.showMarine }));
+  const setMarine = (showMarine: boolean) => settings.update((s) => ({ ...s, showMarine }));
   const removeFav = (id: string) => favorites.update((l) => l.filter((f) => f.id !== id));
 </script>
 
@@ -83,8 +83,8 @@
   <div class="row">
     <span>Marine conditions<br /><small>Waves &amp; swell (needs connection)</small></span>
     <div class="seg" data-testid="seg-marine">
-      <button type="button" class:active={$settings.showMarine} on:click={toggleMarine}>On</button>
-      <button type="button" class:active={!$settings.showMarine} on:click={toggleMarine}>Off</button>
+      <button type="button" class:active={$settings.showMarine} aria-pressed={$settings.showMarine} on:click={() => setMarine(true)}>On</button>
+      <button type="button" class:active={!$settings.showMarine} aria-pressed={!$settings.showMarine} on:click={() => setMarine(false)}>Off</button>
     </div>
   </div>
 </section>
