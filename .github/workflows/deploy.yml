@@ -25,6 +25,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Generate station data
         run: bun run build:data
+      - name: Type check
+        run: bun run check
       - name: Unit tests
         run: bun run test
       - name: Install Playwright Chromium
