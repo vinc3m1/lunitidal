@@ -5,7 +5,7 @@
   import { settings } from '../stores/settings';
   import { selection, selectionStatus } from '../stores/selection';
   import { favorites, isFavorite, toggleFavorite } from '../stores/favorites';
-  import { addDays, createModel, datumOffset, formatDay, formatTime, startOfDayInTz, sunTimes, tzAbbrev } from '../engine';
+  import { createModel, datumOffset, formatDay, formatTime, startOfDayInTz, sunTimes, tzAbbrev } from '../engine';
   import type { Extreme, TidePoint } from '../engine/types';
   import type { TideModel } from '../engine/predictor';
   import TideChart from '../components/TideChart.svelte';
@@ -83,8 +83,8 @@
   // Display in the selected location's timezone, which can differ from the snapped station's
   // when the nearest gauge sits across a timezone line.
   $: tz = $selection?.timezone ?? station?.timezone ?? 'UTC';
-  $: dayStart = station ? addDays(startOfDayInTz(now, tz), dayOffset) : now;
-  $: dayEnd = addDays(dayStart, 1);
+  $: dayStart = station ? startOfDayInTz(now, tz, dayOffset) : now;
+  $: dayEnd = startOfDayInTz(now, tz, dayOffset + 1);
   $: offset = station ? datumOffset(station) : 0;
   $: datumName = station?.chart_datum ?? 'MSL';
   $: tzLabel = station ? tzAbbrev(dayStart, tz) : '';
@@ -100,7 +100,7 @@
   $: extremes = (model ? model.extremes(dayStart, dayEnd) : []).map(
     (e): Extreme => ({ ...e, level: e.level + offset }),
   );
-  $: readoutExtremes = (model ? model.extremes(dayStart, addDays(dayEnd, 1)) : []).map(
+  $: readoutExtremes = (model ? model.extremes(dayStart, startOfDayInTz(now, tz, dayOffset + 2)) : []).map(
     (e): Extreme => ({ ...e, level: e.level + offset }),
   );
   $: levelAtDisplay = (t: Date): number => (model ? model.levelAt(t) + offset : 0);
@@ -125,8 +125,9 @@
 
   function gotoDay(delta: number) {
     dayOffset += delta;
-    const ns = addDays(startOfDayInTz(now, tz), dayOffset);
-    scrubMs = ns.getTime() + 12 * 3_600_000;
+    const start = startOfDayInTz(now, tz, dayOffset);
+    const end = startOfDayInTz(now, tz, dayOffset + 1);
+    scrubMs = (start.getTime() + end.getTime()) / 2;
   }
   function today() {
     dayOffset = 0;

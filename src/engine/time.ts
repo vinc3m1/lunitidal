@@ -56,21 +56,32 @@ export function tzOffsetMs(instant: Date, timeZone: string): number {
     Number(parts.minute),
     Number(parts.second),
   );
-  return asIfUTC - instant.getTime();
+  return asIfUTC - (instant.getTime() - instant.getUTCMilliseconds());
 }
 
-/** The UTC instant of local midnight (in `timeZone`) for the day containing `instant`. */
-export function startOfDayInTz(instant: Date, timeZone: string): Date {
-  const offset = tzOffsetMs(instant, timeZone);
-  const local = new Date(instant.getTime() + offset);
-  const midnightWall = Date.UTC(
-    local.getUTCFullYear(),
-    local.getUTCMonth(),
-    local.getUTCDate(),
-  );
-  const result = new Date(midnightWall - offset);
-  result.setUTCSeconds(0, 0);
-  return result;
+/** First instant of a local calendar day, optionally shifted by calendar days.
+ * Resolve each boundary independently: a DST day can have 23 or 25 hours, and
+ * some zones skip midnight entirely. The offset at noon need not match midnight.
+ */
+export function startOfDayInTz(instant: Date, timeZone: string, dayOffset = 0): Date {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone, year: 'numeric', month: 'numeric', day: 'numeric',
+  });
+  const localDate = (ms: number): number => {
+    const parts = Object.fromEntries(formatter.formatToParts(ms).map((p) => [p.type, p.value]));
+    return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
+  };
+  const target = localDate(instant.getTime()) + dayOffset * 86_400_000;
+  // All IANA offsets fit inside this bracket. Find the first instant belonging
+  // to the requested date (or the next date if a date-line move skipped it).
+  let lo = target - 36 * 3_600_000;
+  let hi = target + 36 * 3_600_000;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (localDate(mid) < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return new Date(lo);
 }
 
 export function addDays(instant: Date, days: number): Date {
