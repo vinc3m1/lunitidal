@@ -489,3 +489,25 @@ test('search results dropdown is scrollable and has adequate height', async ({ p
   const height = await dropdown.evaluate((el) => el.getBoundingClientRect().height);
   expect(height).toBeGreaterThanOrEqual(120);
 });
+
+test('older place-search responses cannot replace newer results', async ({ page }) => {
+  let releaseOld!: () => void;
+  const oldResponse = new Promise<void>((resolve) => { releaseOld = resolve; });
+  await page.route(/geocoding-api\.open-meteo\.com/, async (route) => {
+    const name = new URL(route.request().url()).searchParams.get('name');
+    if (name === 'older') await oldResponse;
+    await route.fulfill({ json: { results: [{
+      id: 1, name: `${name} result`, latitude: -8.77, longitude: 115.22,
+    }] } });
+  });
+  await page.goto('/');
+  const input = page.getByTestId('map-search-input');
+  await input.fill('older');
+  await page.waitForRequest((r) => r.url().includes('name=older'));
+  await input.fill('newer');
+  await expect(page.getByTestId('place-result')).toContainText('newer result');
+  const oldFinished = page.waitForResponse((r) => r.url().includes('name=older'));
+  releaseOld();
+  await oldFinished;
+  await expect(page.getByTestId('place-result')).toContainText('newer result');
+});

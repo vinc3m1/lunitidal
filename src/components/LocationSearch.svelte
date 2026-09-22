@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { loadIndex, searchByName } from '../engine/stations';
   import type { IndexEntry } from '../engine/types';
   import { geocode, geoLabel, type GeoResult } from '../sources/geocode';
@@ -27,20 +27,31 @@
     }
   });
 
+  let searchVersion = 0;
+  onDestroy(() => {
+    clearTimeout(timer);
+    searchVersion++;
+  });
+
   function onInput() {
+    searchVersion++;
+    placeResults = [];
+    geoError = '';
     clearTimeout(timer);
     timer = setTimeout(runSearch, 250);
   }
 
   async function runSearch() {
     const q = query.trim();
+    const version = searchVersion;
     placeResults = [];
     geoError = '';
     if (q.length >= 3 && navigator.onLine) {
       try {
-        placeResults = await geocode(q, 6);
+        const results = await geocode(q, 6);
+        if (version === searchVersion && q === query.trim()) placeResults = results;
       } catch {
-        geoError = 'Place search unavailable';
+        if (version === searchVersion && q === query.trim()) geoError = 'Place search unavailable';
       }
     } else if (q.length >= 3 && !navigator.onLine) {
       geoError = 'Offline — showing stations only';
