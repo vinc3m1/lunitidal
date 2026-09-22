@@ -43,8 +43,12 @@ function validCoords(lat: number, lon: number): boolean {
   return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
 }
 
-function commit(sel: Selection): void {
+let selectionRequest = 0;
+
+function commit(sel: Selection, request: number): void {
+  if (request !== selectionRequest) return;
   selection.set(sel);
+  selectionStatus.set('ready');
   lastLocation.set({
     stationId: sel.station.id,
     label: sel.label,
@@ -57,6 +61,7 @@ function commit(sel: Selection): void {
 
 /** Restore the last location, or fall back to the bundled Benoa seed. */
 export async function initSelection(): Promise<void> {
+  const request = ++selectionRequest;
   selectionStatus.set('loading');
   const last = get(lastLocation);
   try {
@@ -66,6 +71,7 @@ export async function initSelection(): Promise<void> {
     if (last && validCoords(last.lat, last.lon)) {
       try {
         const station = await loadStation(last.stationId);
+        if (request !== selectionRequest) return;
         // Heal legacy "My location"-style labels saved before the labelling fix.
         const label = isLegacyLabel(last.label) ? station.name : last.label;
         const sel = {
@@ -76,7 +82,7 @@ export async function initSelection(): Promise<void> {
           timezone: last.timezone ?? station.timezone,
         };
         selection.set(sel);
-        if (label !== last.label) commit(sel);
+        if (label !== last.label) commit(sel, request);
         selectionStatus.set('ready');
         return;
       } catch {
@@ -88,15 +94,17 @@ export async function initSelection(): Promise<void> {
     if (typeof navigator === 'undefined' || navigator.onLine) {
       try {
         const loc = await getIpLocation();
-        await selectPoint(loc.lat, loc.lon, loc.label);
-        selectionStatus.set('ready');
+        if (request !== selectionRequest) return;
+        commit(await resolvePoint(loc.lat, loc.lon, loc.label), request);
         return;
       } catch {
         /* IP geolocation unavailable — fall back to seed */
       }
     }
 
+    if (request !== selectionRequest) return;
     const station = await loadSeedStation();
+    if (request !== selectionRequest) return;
     selection.set({
       station,
       label: station.name,
@@ -106,7 +114,7 @@ export async function initSelection(): Promise<void> {
     });
     selectionStatus.set('ready');
   } catch {
-    selectionStatus.set('error');
+    if (request === selectionRequest) selectionStatus.set('error');
   }
 }
 
@@ -125,6 +133,13 @@ export async function selectPoint(
   label?: string,
   timezone?: string,
 ): Promise<void> {
+  const request = ++selectionRequest;
+  commit(await resolvePoint(lat, lon, label, timezone), request);
+}
+
+async function resolvePoint(
+  lat: number, lon: number, label?: string, timezone?: string,
+): Promise<Selection> {
   // Fail fast on bad input. These coordinates drive the station snap, the marine fetch, and the
   // stored point — so garbage here means the whole selection is wrong, not just the timezone.
   // (The station-zone fallback below is deliberately *not* a catch-all for this; it only covers a
@@ -145,13 +160,13 @@ export async function selectPoint(
   // Display in the chosen location's own zone so times follow the place even when the nearest
   // gauge sits across a timezone line; only fall back to the station's zone as a last resort
   // (e.g. an out-of-range coordinate the lookup can't place).
-  commit({
+  return {
     station,
     label: resolved || station.name,
     km: near.km,
     point: { lat, lon },
     timezone: timezone || lookedUpTz || station.timezone,
-  });
+  };
 }
 
 /**
@@ -173,16 +188,19 @@ export function slugForStationId(id: string): string | null {
 
 /** Resolve a `/tides/<slug>/` deep link to its station and select it. */
 export async function selectStationBySlug(slug: string): Promise<void> {
+  const request = ++selectionRequest;
   const maps = await loadSlugMaps();
   const id = maps.slugToId[slug];
   if (!id) throw new Error(`Unknown station slug: ${slug}`);
   const index = await loadIndex();
   const entry = index.find((e) => e.id === id);
+  if (request !== selectionRequest) return;
   await selectStationId(id, entry?.name ?? id);
 }
 
 /** Pick a station directly (offline station search). */
 export async function selectStationId(id: string, label: string): Promise<void> {
+  const request = ++selectionRequest;
   const station = await loadStation(id);
   commit({
     station,
@@ -190,11 +208,12 @@ export async function selectStationId(id: string, label: string): Promise<void> 
     km: null,
     point: { lat: station.latitude, lon: station.longitude },
     timezone: station.timezone,
-  });
+  }, request);
 }
 
 /** Re-select a saved favorite by its stored station (stable — no re-snapping). */
 export async function selectFavorite(fav: Favorite): Promise<void> {
+  const request = ++selectionRequest;
   if (fav.id) {
     try {
       const station = await loadStation(fav.id);
@@ -210,16 +229,16 @@ export async function selectFavorite(fav: Favorite): Promise<void> {
         km: null,
         point: { lat, lon },
         timezone: fav.timezone ?? (await timezoneAt(lat, lon)) ?? station.timezone,
-      });
+      }, request);
       return;
     } catch {
       /* saved station unavailable — re-snap from the point */
     }
   }
-  await selectPoint(
+  commit(await resolvePoint(
     fav.lat,
     fav.lon,
     isLegacyLabel(fav.label) ? undefined : fav.label,
     fav.timezone,
-  );
+  ), request);
 }

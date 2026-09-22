@@ -145,3 +145,32 @@ describe('selection timezone', () => {
     expect(get(selection)!.timezone).toBe('Asia/Jakarta');
   });
 });
+
+it('keeps the newest station selection when an older load resolves last', async () => {
+  const { loadStation } = await import('../engine/stations');
+  const { selectStationId, selection } = await import('./selection');
+  const { get } = await import('svelte/store');
+  let release!: (station: any) => void;
+  vi.mocked(loadStation).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+  const old = selectStationId('older', 'Older');
+  await selectStationId('sta-bali', 'Newest');
+  release({ ...BALI_GAUGE, id: 'older' });
+  await old;
+  expect(get(selection)?.label).toBe('Newest');
+  expect(JSON.parse(localStorage.getItem('lunitidal:lastLocation')!).label).toBe('Newest');
+});
+
+it('does not let slow startup IP geolocation replace an explicit selection', async () => {
+  vi.stubGlobal('navigator', { onLine: true });
+  const { getIpLocation } = await import('../sources/ipgeo');
+  const { initSelection, selectStationId, selection, selectionStatus } = await import('./selection');
+  const { get } = await import('svelte/store');
+  let release!: (location: any) => void;
+  vi.mocked(getIpLocation).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+  const startup = initSelection();
+  await selectStationId('sta-bali', 'My choice');
+  release({ lat: -8.7, lon: 115.2, label: 'IP city' });
+  await startup;
+  expect(get(selection)?.label).toBe('My choice');
+  expect(get(selectionStatus)).toBe('ready');
+});
