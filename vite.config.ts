@@ -30,7 +30,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,json,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,mjs,css,html,json,svg,png,woff2}'],
         // Precache the app shell + slim index + benoa seed, but NOT the thousands of
         // per-station constituent files OR the thousands of prerendered station pages
         // (both are runtime-cached / served from the shell on demand instead).

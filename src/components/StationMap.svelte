@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import maplibregl from 'maplibre-gl';
+  import * as maplibregl from 'maplibre-gl';
+  import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
   import 'maplibre-gl/dist/maplibre-gl.css';
   import { loadIndex, searchByName } from '../engine/stations';
   import type { IndexEntry } from '../engine/types';
@@ -10,6 +11,8 @@
   import { proposed } from '../stores/proposed';
   import { settings } from '../stores/settings';
   import { formatDistance } from '../engine/units';
+
+  maplibregl.setWorkerUrl(mapWorkerUrl);
 
   export let lat = -8.7;
   export let lon = 115.2;
