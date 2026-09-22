@@ -60,8 +60,19 @@
 
   onMount(() => {
     void loadMap();
-    const iv = setInterval(() => (now = new Date()), 60_000);
-    return () => clearInterval(iv);
+    const updateNow = () => {
+      const next = new Date();
+      // Follow the clock until the user scrubs away from the live readout.
+      if (dayOffset === 0 && Math.abs(scrubMs - now.getTime()) < 60_000) scrubMs = next.getTime();
+      now = next;
+    };
+    const onVisible = () => { if (!document.hidden) updateNow(); };
+    const iv = setInterval(updateNow, 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   });
 
   let model: TideModel | null = null;
